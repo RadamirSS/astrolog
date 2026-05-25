@@ -1,0 +1,10 @@
+# Example reverse proxy for Path B (VPS + Docker)
+# Terminate TLS at Caddy/Nginx and forward browser traffic to SaaS API only.
+# Do not expose Astro API publicly.
+
+:443 {
+  reverse_proxy saas-api:8000
+}
+
+# Frontend apps (miniapp, dashboard, superadmin) are typically deployed separately
+# (e.g. Vercel) and call the SaaS API over HTTPS with CORS + cookie domain configured.

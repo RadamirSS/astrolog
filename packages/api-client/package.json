@@ -1,0 +1,23 @@
+{
+  "name": "@astro/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/astro/client.test.ts src/payment/client.test.ts"
+  },
+  "dependencies": {
+    "@astro/api-contracts": "workspace:*",
+    "@astro/mock-api": "workspace:*",
+    "@astro/tenant-config": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@astro/tsconfig": "workspace:*",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

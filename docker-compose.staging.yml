@@ -1,0 +1,82 @@
+# Staging / VPS Docker Compose template
+# Usage:
+#   cp .env.staging.example .env.staging
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+#
+# Put Nginx/Caddy in front for TLS termination and route public traffic to SaaS API only.
+# Astro API should remain on the internal Docker network.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-astro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}
+      POSTGRES_DB: ${POSTGRES_DB:-astro_saas}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astro} -d ${POSTGRES_DB:-astro_saas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  saas-api:
+    build:
+      context: .
+      dockerfile: services/saas-api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.staging}
+      ASTRO_API_BASE_URL: http://astro-api:8100
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - saas_media:/app/services/saas-api/var/media
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  astro-api:
+    build:
+      context: .
+      dockerfile: services/astro-api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    depends_on:
+      saas-api:
+        condition: service_started
+    expose:
+      - "8100"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/ready')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  saas_media:

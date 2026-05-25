@@ -1,0 +1,33 @@
+{
+  "name": "astro-platform",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "find . -name node_modules -prune -o \\( -name .next -o -name dist -o -name .turbo \\) -type d -exec rm -rf {} + 2>/dev/null; find . -name node_modules -prune -o -name '._*' -type f -delete 2>/dev/null; find . -name node_modules -prune -o -name '*.tsbuildinfo' -type f -delete 2>/dev/null; true",
+    "dev:saas-api": "bash scripts/dev-saas-api.sh",
+    "dev:astro-api": "bash scripts/dev-astro-api.sh",
+    "dev:backend": "bash scripts/dev-backend.sh",
+    "test:backend": "bash scripts/test-backend.sh",
+    "db:migrate:saas": "bash scripts/db-migrate-saas.sh",
+    "db:seed:saas": "bash scripts/db-seed-saas.sh",
+    "pilot:bootstrap": "bash scripts/pilot-bootstrap.sh",
+    "smoke:local": "bash scripts/smoke/smoke-local.sh",
+    "archive": "bash scripts/archive.sh",
+    "archive:be05": "bash scripts/archive.sh astrology-platform-be-05-closed-pilot-readiness.tar.gz",
+    "archive:pilot-ready-09": "bash scripts/archive.sh front1-astro-pilot-ready-package5-$(date +%Y%m%d-%H%M).tar.gz",
+    "pilot:preflight": "bash scripts/pilot-preflight.sh",
+    "archive:closed-pilot-10": "bash scripts/archive.sh front1-astro-closed-pilot-ready-$(date +%Y%m%d-%H%M).tar.gz",
+    "archive:pilot-hardening-13": "bash scripts/archive.sh front1-astro-closed-pilot-ready-$(date +%Y%m%d-%H%M).tar.gz"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

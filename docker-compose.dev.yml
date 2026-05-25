@@ -1,0 +1,89 @@
+# Local backend stack — Postgres + SaaS API + Astro API
+# Usage:
+#   cp .env.example .env.local
+#   docker compose -f docker-compose.dev.yml up --build
+#
+# Frontend apps run on the host (pnpm dev) in remote mode.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: astro
+      POSTGRES_PASSWORD: astro
+      POSTGRES_DB: astro_saas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astro -d astro_saas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  saas-api:
+    build:
+      context: .
+      dockerfile: services/saas-api/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://astro:astro@postgres:5432/astro_saas
+      ASTRO_API_BASE_URL: http://astro-api:8100
+      MEDIA_PUBLIC_BASE_URL: http://localhost:8000/media
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:3002
+      ALLOW_DEV_TELEGRAM_AUTH: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - saas_media:/app/services/saas-api/var/media
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  astro-api:
+    build:
+      context: .
+      dockerfile: services/astro-api/Dockerfile
+    ports:
+      - "8100:8100"
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      APP_ENV: development
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:3002
+    depends_on:
+      saas-api:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  postgres_data:
+  saas_media:

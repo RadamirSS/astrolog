@@ -1,0 +1,32 @@
+{
+  "name": "@astro/miniapp-renderer",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@astro/api-client": "workspace:*",
+    "@astro/api-contracts": "workspace:*",
+    "@astro/i18n": "workspace:*",
+    "@astro/report-renderer": "workspace:*",
+    "@astro/telegram": "workspace:*",
+    "@astro/tenant-config": "workspace:*",
+    "@astro/mock-api": "workspace:*",
+    "@astro/theme-engine": "workspace:*",
+    "@astro/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@astro/tsconfig": "workspace:*",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "react": "^18.3.1",
+    "typescript": "^5.7.2"
+  }
+}
