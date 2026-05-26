@@ -7,8 +7,11 @@ ARCHIVE_PATH="$ROOT/archives/$ARCHIVE_NAME"
 
 cd "$ROOT"
 
+# shellcheck source=lib/pnpm-cmd.sh
+source "$ROOT/scripts/lib/pnpm-cmd.sh"
+
 echo "Cleaning build artifacts and junk files..."
-pnpm clean
+run_pnpm clean
 
 JUNK_COUNT=0
 while IFS= read -r -d '' file; do
@@ -103,7 +106,7 @@ COPYFILE_DISABLE=1 tar --disable-copyfile --no-xattrs \
   -czf "$ARCHIVE_PATH" .
 
 echo "Verifying archive contents..."
-if tar -tzf "$ARCHIVE_PATH" | grep -E '(^|/)\._|tsbuildinfo|next-env\.d\.ts|node_modules|\.next|/dist/|/build/|\.turbo|\.venv|__pycache__|\.pytest_cache|\.pyc|(^|/)\.env$|\.DS_Store|\.eslintcache|(^|/)archives(/|$)|services/saas-api/var(/|$)'; then
+if tar -tzf "$ARCHIVE_PATH" | grep -E '(^|/)\._|tsbuildinfo|tsconfig\.tsbuildinfo|next-env\.d\.ts|node_modules|\.next|/dist/|/build/|\.turbo|/\.cache/|\.venv|__pycache__|__MACOSX|\.pytest_cache|\.pyc|(^|/)\.env$|\.DS_Store|\.eslintcache|(^|/)archives(/|$)|services/saas-api/var(/|$)'; then
   echo "Error: archive contains excluded paths." >&2
   exit 1
 fi

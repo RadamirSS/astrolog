@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/CLOSED_PILOT_PAYOUT_RUNBOOK.md](./ru/CLOSED_PILOT_PAYOUT_RUNBOOK.md)
+
+---
+
 # Closed Pilot Manual Payout Runbook
 
 Manual payout process for platform admins during closed pilot. **No real money movement is automated by this platform.**

@@ -1,6 +1,10 @@
 import {
   createDefaultTenantConfig,
   createDefaultMiniApp,
+  ensureSurfaces,
+  setSurfaceEnabled,
+  syncCatalogProducts,
+  syncSurfaceUrls,
   type TenantConfig,
   type TenantConfigBundle,
   type TenantRecord,
@@ -112,7 +116,7 @@ cosmicDraft.content.home.headline = "Navigate Your Cosmic Blueprint";
 cosmicDraft.content.home.subheadline = "Clarity for your next chapter, written in the stars.";
 cosmicDraft.brand.tagline = "Ancient wisdom, modern guidance";
 cosmicDraft.brand.name = "Orion Kepler";
-cosmicDraft.brand.bio = "Visionary astrology for innovators and changemakers ready to align with their cosmic purpose.";
+cosmicDraft.brand.bio = "Visionary astrology for innovators ready to align with their next chapter.";
 cosmicDraft.modules.onboarding = true;
 cosmicDraft.modules.freeReport = true;
 cosmicDraft.modules.products = true;
@@ -140,7 +144,7 @@ mysticDraft.modules.freeReport = true;
 mysticDraft.modules.products = true;
 mysticDraft.modules.profile = true;
 mysticDraft.content.home.whatYouReceive = [
-  { id: "w1", title: "Shadow Snapshot", text: "Key themes from your natal chart distilled into clear language." },
+  { id: "w1", title: "Chart Snapshot", text: "Key themes from your natal chart distilled into clear language." },
   { id: "w2", title: "Planetary Patterns", text: "Highlights of your strongest cosmic influences right now." },
   { id: "w3", title: "Next Step Guidance", text: "A gentle nudge toward deeper offerings when you are ready." },
 ];
@@ -167,16 +171,37 @@ mysticDraft.content.loadingMessages = [
 ];
 
 mysticDraft.locales = { ru: mysticRuLocale };
-mysticDraft.miniApp = {
-  ...createDefaultMiniApp("nicole", "pink_love"),
-  publicSlug: "nicole",
-  defaultTopic: "relationships",
-  publicStatus: "published",
-  introCopy:
-    "Астролог Nicole — мягкий вход в тему отношений через бесплатный мини-разбор.",
-  welcomeMessage:
-    "Добро пожаловать! Выберите тему и получите персональный мини-разбор.",
-};
+mysticDraft.products = syncCatalogProducts(mysticDraft.slug, "ru", [
+  "free_report",
+  "low_ticket_relationships",
+  "bundle_all_topics",
+  "premium_consultation",
+]);
+mysticDraft.miniApp = syncSurfaceUrls(
+  setSurfaceEnabled(
+    setSurfaceEnabled(
+      setSurfaceEnabled(
+        {
+          ...createDefaultMiniApp("nicole", "pink_love"),
+          publicSlug: "nicole",
+          name: "Nicole Astrology",
+          defaultTopic: "relationships",
+          publicStatus: "published",
+          introCopy:
+            "Астролог Nicole — мягкий вход в тему отношений через бесплатный мини-разбор.",
+          welcomeMessage:
+            "Добро пожаловать! Выберите тему и получите персональный мини-разбор.",
+        },
+        "telegram_mini_app",
+        true
+      ),
+      "website",
+      true
+    ),
+    "mobile_web",
+    true
+  )
+);
 
 const softDraft = createDefaultTenantConfig(
   "tenant_soft",
@@ -207,7 +232,7 @@ softDraft.content.home.whatYouReceive = [
 softDraft.content.home.faqItems = [
   {
     question: "What topic should I choose?",
-    answer: "Pick the area where you want the most clarity — relationships, purpose, career, and more.",
+    answer: "Pick the area where you want the most clarity — money, relationships, or personality.",
   },
   {
     question: "Is my reading private?",
@@ -285,6 +310,33 @@ luxuryDraft.content.loadingMessages = [
 ];
 
 luxuryDraft.locales = { ru: luxuryRuLocale };
+luxuryDraft.products = syncCatalogProducts(luxuryDraft.slug, "ru", [
+  "free_report",
+  "low_ticket_money",
+  "main_natal_portrait",
+  "premium_consultation",
+]);
+luxuryDraft.miniApp = syncSurfaceUrls(
+  setSurfaceEnabled(
+    setSurfaceEnabled(
+      {
+        ...createDefaultMiniApp("celestial-elite", "dark_gold_mystic"),
+        publicSlug: "celestial-elite",
+        name: "Celestial Elite",
+        defaultTopic: "money",
+        publicStatus: "published",
+        introCopy: "Premium astrology counsel for discerning clients.",
+        welcomeMessage: "Welcome to your private celestial advisory.",
+      },
+      "website",
+      true
+    ),
+    "mobile_web",
+    true
+  )
+);
+// Telegram surface stays disabled for creator 2
+luxuryDraft.miniApp = setSurfaceEnabled(luxuryDraft.miniApp!, "telegram_mini_app", false);
 
 export const mockTenantConfigs: Record<string, TenantConfigBundle> = {
   tenant_mystic: {
@@ -324,7 +376,7 @@ export const mockReports: Record<string, Report> = {
   tenant_mystic: {
     id: "report_mystic_free",
     type: "natal",
-    title: "Your Shadow Snapshot",
+    title: "Your Free Report Preview",
     subtitle: "A glimpse beneath the surface",
     summary:
       "Your chart reveals a seeker drawn to depth and transformation. This free reading illuminates the patterns shaping your inner world.",
@@ -488,7 +540,7 @@ export const mockReports: Record<string, Report> = {
     sections: [
       {
         id: "s1",
-        title: "Life Purpose Signal",
+        title: "Personality Signal",
         content:
           "You are here to innovate and challenge the status quo. Your unique perspective is not a flaw — it is your compass.",
         order: 0,

@@ -19,8 +19,10 @@
     "archive:be05": "bash scripts/archive.sh astrology-platform-be-05-closed-pilot-readiness.tar.gz",
     "archive:pilot-ready-09": "bash scripts/archive.sh front1-astro-pilot-ready-package5-$(date +%Y%m%d-%H%M).tar.gz",
     "pilot:preflight": "bash scripts/pilot-preflight.sh",
+    "docs:check": "bash scripts/docs-check.sh",
     "archive:closed-pilot-10": "bash scripts/archive.sh front1-astro-closed-pilot-ready-$(date +%Y%m%d-%H%M).tar.gz",
-    "archive:pilot-hardening-13": "bash scripts/archive.sh front1-astro-closed-pilot-ready-$(date +%Y%m%d-%H%M).tar.gz"
+    "archive:pilot-hardening-13": "bash scripts/archive.sh front1-astro-closed-pilot-ready-$(date +%Y%m%d-%H%M).tar.gz",
+    "archive:final-gate-14": "bash scripts/archive.sh front1-astro-final-gate-ready-$(date +%Y%m%d-%H%M).tar.gz"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

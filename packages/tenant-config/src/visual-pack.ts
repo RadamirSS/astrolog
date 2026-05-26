@@ -7,10 +7,10 @@ import type {
 } from "./types";
 
 export const VISUAL_PACK_LABELS: Record<VisualPack, { ru: string; en: string }> = {
-  sky_clarity: { ru: "Ясное небо", en: "Sky Clarity" },
+  sky_clarity: { ru: "Небо и ясность", en: "Sky Clarity" },
   dark_gold_mystic: { ru: "Тёмное золото", en: "Dark Gold Mystic" },
-  pink_love: { ru: "Розовая любовь", en: "Pink Love" },
-  cosmic_pastel: { ru: "Космический пастель", en: "Cosmic Pastel" },
+  pink_love: { ru: "Розовая Луна", en: "Pink Moon" },
+  cosmic_pastel: { ru: "Космическая пастель", en: "Cosmic Pastel" },
   brand_default: { ru: "Бренд по умолчанию", en: "Brand Default" },
 };
 

@@ -98,7 +98,7 @@ export function CompactPreview({
           )}
         </>
       )}
-      <div className="mx-auto w-full max-w-[280px] overflow-hidden rounded-[2rem] border-4 border-slate-700 bg-slate-950 shadow-xl">
+      <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border-[5px] border-slate-700 bg-slate-950 shadow-xl">
         <div className="border-b border-slate-800 px-4 py-2 text-center text-xs font-medium text-violet-300">
           {label}
         </div>
@@ -110,6 +110,7 @@ export function CompactPreview({
               initialScreen={screen}
               previewProductId={resolvedProductId}
               seedPreviewSession={needsPreviewSession(screen)}
+              showPreviewNavigation
             />
           </div>
         </ThemeProvider>

@@ -36,6 +36,8 @@ export const dashboardSummarySchema = z.object({
     miniAppSlugConfigured: z.boolean(),
     visualPackSelected: z.boolean(),
     previewChecked: z.boolean(),
+    surfacesSelected: z.boolean(),
+    telegramBotConnected: z.boolean(),
   }),
   activeProductsCount: z.number().int().min(0),
   enabledModulesCount: z.number().int().min(0),

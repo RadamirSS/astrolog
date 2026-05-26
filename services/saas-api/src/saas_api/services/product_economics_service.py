@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from saas_api.db.models.commission import Commission
 from saas_api.db.models.order import Order
 from saas_api.db.models.payment import Payment
-from saas_api.services import ops_seed_service
+from saas_api.services.approved_product_catalog import APPROVED_PRODUCTS, CATALOG_PRICE_LABELS
 
 
 def compute_product_economics(db: Session, tenant_id: str) -> list[dict[str, Any]]:
@@ -19,11 +19,9 @@ def compute_product_economics(db: Session, tenant_id: str) -> list[dict[str, Any
         .all()
     )
     if not paid_orders:
-        return ops_seed_service.get_product_economics(tenant_id)
+        return []
 
-    commissions = (
-        db.query(Commission).filter(Commission.tenant_id == tenant_id).all()
-    )
+    commissions = db.query(Commission).filter(Commission.tenant_id == tenant_id).all()
     commission_by_order = {c.order_id: c for c in commissions}
 
     payments = db.query(Payment).filter(Payment.tenant_id == tenant_id).all()
@@ -32,12 +30,15 @@ def compute_product_economics(db: Session, tenant_id: str) -> list[dict[str, Any
     buckets: dict[str, dict[str, Any]] = {}
     for order in paid_orders:
         key = order.product_type
+        catalog = APPROVED_PRODUCTS.get(key, {})
         bucket = buckets.setdefault(
             key,
             {
                 "productType": order.product_type,
                 "productName": order.product_title,
-                "price": order.amount,
+                "level": catalog.get("level"),
+                "price": float(catalog.get("price", order.amount)),
+                "priceLabel": CATALOG_PRICE_LABELS.get(key),
                 "salesCount": 0,
                 "grossRevenue": 0.0,
                 "partnerCommission": 0.0,
@@ -46,6 +47,7 @@ def compute_product_economics(db: Session, tenant_id: str) -> list[dict[str, Any
                 "estimatedApiCost": 0.0,
                 "grossProfitEstimate": 0.0,
                 "conversionRate": None,
+                "conversionRatePlaceholder": None,
             },
         )
         bucket["salesCount"] += 1

@@ -6,84 +6,94 @@ import {
   listPayouts,
   updatePayout,
 } from "@astro/api-client";
+import { getPayoutMethodLabel } from "@astro/i18n";
 import { LoadingState, SectionCard } from "@astro/ui";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useI18n, useT } from "@astro/i18n";
 import {
+  OpsActionButton,
   OpsPageHeader,
   OpsStatusBadge,
   OpsTable,
-  formatDate,
-  formatMoney,
+  formatDateLocale,
+  formatMoneyLocale,
+  useOpsLocale,
 } from "../../../components/ops/OpsShared";
 import { useAccountRole } from "../../../hooks/useAccountRole";
 import { useOpsQuery } from "../../../hooks/useOpsData";
 
 export default function PayoutsPage() {
+  const t = useT();
+  const { locale } = useI18n();
+  const opsLocale = useOpsLocale();
   const searchParams = useSearchParams();
   const tenantId =
     searchParams.get("tenantId") ??
     process.env.NEXT_PUBLIC_DEFAULT_DASHBOARD_TENANT_ID ??
     "tenant_mystic";
-  const { isPlatformAdmin: admin } = useAccountRole();
+  const { isPlatformAdmin: admin, account } = useAccountRole();
+  const partnerId = account?.partnerId ?? undefined;
 
   const { data, loading, error, reload } = useOpsQuery(
-    () => listPayouts(tenantId),
-    [tenantId]
+    () => listPayouts(tenantId, admin ? undefined : partnerId),
+    [tenantId, partnerId, admin]
   );
-  const { data: partners } = useOpsQuery(() => listPartners(tenantId), [tenantId]);
+  const { data: partners } = useOpsQuery(
+    () => (admin ? listPartners(tenantId) : Promise.resolve([])),
+    [tenantId, admin]
+  );
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [draftPartnerId, setDraftPartnerId] = useState("");
   const [draftAmount, setDraftAmount] = useState("");
 
-  const exportCsv = () => {
-    const rows = data ?? [];
-    const header = "id,partner,amount,currency,status,method,createdAt\n";
-    const body = rows
-      .map(
-        (p) =>
-          `${p.id},${p.partnerName ?? p.partnerId},${p.amount},${p.currency ?? "USD"},${p.status},${p.method ?? "manual"},${p.createdAt}`
-      )
-      .join("\n");
-    const blob = new Blob([header + body], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `payouts-${tenantId}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const visiblePayouts = useMemo(() => {
+    if (admin || !partnerId) return data ?? [];
+    return (data ?? []).filter((p) => p.partnerId === partnerId);
+  }, [data, admin, partnerId]);
 
-  if (loading) return <LoadingState message="Loading payouts..." className="text-slate-400" />;
+  if (loading) return <LoadingState message={t("dashboard.finance.loading")} className="text-slate-400" />;
   if (error) return <p className="text-red-400">{error}</p>;
+
+  const creatorColumns = [
+    { key: "date", label: t("dashboard.finance.date") },
+    { key: "amount", label: t("dashboard.finance.amount") },
+    { key: "method", label: t("dashboard.finance.method") },
+    { key: "status", label: t("dashboard.finance.statusColumn") },
+    { key: "comment", label: t("dashboard.finance.comment") },
+  ];
+
+  const adminColumns = [
+    ...creatorColumns,
+    { key: "partner", label: t("dashboard.finance.partner") },
+    { key: "notes", label: t("dashboard.finance.notesActions") },
+  ];
 
   return (
     <div className="space-y-6">
       <OpsPageHeader
-        title="Payouts"
-        subtitle="Manual payout workflow — no automatic transfers in closed pilot"
+        title={t("dashboard.finance.payoutsTitle")}
+        subtitle={t("dashboard.finance.payoutsSubtitle")}
       />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={exportCsv}
-          className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700"
-        >
-          Export CSV
-        </button>
-      </div>
+
+      {!admin && (
+        <div className="space-y-2 rounded-xl border border-sky-500/20 bg-sky-950/30 px-4 py-3 text-sm text-sky-100">
+          <p>{t("dashboard.finance.payoutsManualNote")}</p>
+          <p className="text-sky-200/80">{t("dashboard.finance.payoutsAutoNote")}</p>
+        </div>
+      )}
 
       {admin && (
-        <SectionCard title="Create payout draft">
+        <SectionCard title={t("dashboard.finance.createPayoutDraft")}>
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm">
-              Partner
+              {t("dashboard.finance.selectPartner")}
               <select
                 value={draftPartnerId}
                 onChange={(e) => setDraftPartnerId(e.target.value)}
-                className="mt-1 block rounded border border-slate-700 bg-slate-900 px-2 py-1"
+                className="mt-1 block min-w-[180px] rounded-md border border-slate-700 bg-slate-900 px-3 py-2"
               >
-                <option value="">Select partner</option>
+                <option value="">{t("dashboard.finance.selectPartnerPlaceholder")}</option>
                 {(partners ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -92,19 +102,18 @@ export default function PayoutsPage() {
               </select>
             </label>
             <label className="text-sm">
-              Amount
+              {t("dashboard.finance.amount")}
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={draftAmount}
                 onChange={(e) => setDraftAmount(e.target.value)}
-                className="mt-1 block rounded border border-slate-700 bg-slate-900 px-2 py-1"
+                className="mt-1 block rounded-md border border-slate-700 bg-slate-900 px-3 py-2"
               />
             </label>
-            <button
-              type="button"
-              className="rounded bg-violet-700 px-4 py-2 text-sm"
+            <OpsActionButton
+              label={t("dashboard.finance.createDraft")}
               disabled={!draftPartnerId || !draftAmount}
               onClick={async () => {
                 await createPayout(tenantId, {
@@ -115,107 +124,88 @@ export default function PayoutsPage() {
                 setDraftAmount("");
                 await reload();
               }}
-            >
-              Create draft
-            </button>
+            />
           </div>
         </SectionCard>
       )}
 
-      <SectionCard title="Payout records">
-        <OpsTable
-          columns={[
-            { key: "id", label: "ID" },
-            { key: "partner", label: "Partner" },
-            { key: "amount", label: "Amount" },
-            { key: "status", label: "Status" },
-            { key: "method", label: "Method" },
-            { key: "created", label: "Created" },
-            { key: "approved", label: "Approved" },
-            { key: "paid", label: "Paid" },
-            { key: "notes", label: "Notes / Actions" },
-          ]}
-          rows={(data ?? []).map((p) => ({
-            id: p.id,
-            partner: p.partnerName ?? p.partnerId,
-            amount: formatMoney(p.amount, p.currency),
-            status: <OpsStatusBadge status={p.status} />,
-            method: p.method ?? "manual",
-            created: formatDate(p.createdAt),
-            approved: p.approvedAt ? formatDate(p.approvedAt) : "—",
-            paid: p.paidAt ? formatDate(p.paidAt) : "—",
-            notes: (
-              <div className="space-y-2 min-w-[220px]">
+      <SectionCard title={t("dashboard.finance.payoutsTitle")}>
+        {visiblePayouts.length === 0 && !admin ? (
+          <p className="text-sm text-slate-400">{t("dashboard.finance.emptyPayouts")}</p>
+        ) : (
+          <OpsTable
+            columns={admin ? adminColumns : creatorColumns}
+            rows={visiblePayouts.map((p) => ({
+            date: formatDateLocale(p.createdAt, opsLocale),
+            amount: formatMoneyLocale(p.amount, p.currency, opsLocale),
+            method: getPayoutMethodLabel(p.method ?? "manual", locale),
+            status: <OpsStatusBadge status={p.status} category="payout" />,
+            comment: p.notes ?? p.failureReason ?? "—",
+            partner: admin ? p.partnerName ?? p.partnerId : undefined,
+            notes: admin ? (
+              <div className="min-w-[220px] space-y-2">
                 <p className="text-xs text-slate-400">{p.notes ?? p.failureReason ?? "—"}</p>
                 <input
                   type="text"
-                  placeholder="Add note..."
+                  placeholder={t("dashboard.finance.addNotePlaceholder")}
                   value={noteDraft[p.id] ?? ""}
                   onChange={(e) =>
                     setNoteDraft((prev) => ({ ...prev, [p.id]: e.target.value }))
                   }
-                  className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs"
+                  className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs"
                 />
-                <div className="flex flex-wrap gap-1">
-                  {admin && (p.status === "draft" || p.status === "pending_approval") && (
-                    <button
-                      type="button"
-                      className="rounded bg-violet-700 px-2 py-1 text-xs"
+                <div className="flex flex-wrap gap-2">
+                  {(p.status === "draft" || p.status === "pending_approval") && (
+                    <OpsActionButton
+                      label={t("dashboard.finance.approve")}
                       onClick={async () => {
                         await updatePayout(tenantId, p.id, { action: "approve" });
                         await reload();
                       }}
-                    >
-                      Approve
-                    </button>
+                    />
                   )}
-                  {admin && p.status === "approved" && (
-                    <button
-                      type="button"
-                      className="rounded bg-emerald-800 px-2 py-1 text-xs"
-                      onClick={async () => {
-                        await updatePayout(tenantId, p.id, {
-                          action: "paid",
-                          notes: noteDraft[p.id],
-                        });
-                        await reload();
-                      }}
-                    >
-                      Mark paid
-                    </button>
+                  {p.status === "approved" && (
+                    <>
+                      <OpsActionButton
+                        label={t("dashboard.finance.markPaid")}
+                        variant="success"
+                        onClick={async () => {
+                          await updatePayout(tenantId, p.id, {
+                            action: "paid",
+                            notes: noteDraft[p.id],
+                          });
+                          await reload();
+                        }}
+                      />
+                      <OpsActionButton
+                        label={t("dashboard.finance.markFailed")}
+                        variant="danger"
+                        onClick={async () => {
+                          await updatePayout(tenantId, p.id, {
+                            action: "failed",
+                            reason: noteDraft[p.id] || t("dashboard.finance.manualFailureReason"),
+                          });
+                          await reload();
+                        }}
+                      />
+                    </>
                   )}
-                  {admin && p.status === "approved" && (
-                    <button
-                      type="button"
-                      className="rounded bg-red-900 px-2 py-1 text-xs"
-                      onClick={async () => {
-                        await updatePayout(tenantId, p.id, {
-                          action: "failed",
-                          reason: noteDraft[p.id] || "Manual failure",
-                        });
-                        await reload();
-                      }}
-                    >
-                      Mark failed
-                    </button>
-                  )}
-                  {admin && p.status !== "paid" && p.status !== "cancelled" && (
-                    <button
-                      type="button"
-                      className="rounded bg-slate-700 px-2 py-1 text-xs"
+                  {p.status !== "paid" && p.status !== "cancelled" && (
+                    <OpsActionButton
+                      label={t("dashboard.finance.cancel")}
+                      variant="neutral"
                       onClick={async () => {
                         await updatePayout(tenantId, p.id, { action: "cancel" });
                         await reload();
                       }}
-                    >
-                      Cancel
-                    </button>
+                    />
                   )}
                 </div>
               </div>
-            ),
+            ) : undefined,
           }))}
-        />
+          />
+        )}
       </SectionCard>
     </div>
   );

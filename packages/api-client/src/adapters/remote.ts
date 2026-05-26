@@ -40,6 +40,10 @@ import {
   premiumRequestSchema,
   publicPartnerSchema,
   premiumRequestListSchema,
+  creatorMiniAppResponseSchema,
+  publicSurfaceResponseSchema,
+  telegramIntegrationStatusSchema,
+  validateTelegramBotResponseSchema,
   tenantConfigResponseSchema,
   tenantConfigStatusResponseSchema,
   tenantListItemSchema,
@@ -787,4 +791,85 @@ export const remoteAdapter: ApiAdapter = {
       { method: "PATCH", body: JSON.stringify(update) },
       premiumRequestSchema
     ),
+  getCreatorMiniApp: (tenantId) =>
+    remoteRequest(API_ENDPOINTS.dashboardCreatorMiniApp(tenantId), undefined, creatorMiniAppResponseSchema),
+  updateCreatorMiniApp: (tenantId, patch) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardCreatorMiniApp(tenantId),
+      { method: "PUT", body: JSON.stringify(patch) },
+      creatorMiniAppResponseSchema
+    ),
+  publishCreatorMiniApp: (tenantId) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardCreatorMiniAppPublish(tenantId),
+      { method: "POST" },
+      creatorMiniAppResponseSchema
+    ),
+  unpublishCreatorMiniApp: (tenantId) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardCreatorMiniAppUnpublish(tenantId),
+      { method: "POST" },
+      creatorMiniAppResponseSchema
+    ),
+  updateSurfaceConfig: (tenantId, surfaceId, patch) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardSurface(tenantId, surfaceId),
+      { method: "PUT", body: JSON.stringify(patch) },
+      creatorMiniAppResponseSchema
+    ),
+  setSurfaceEnabled: (tenantId, type, enabled) =>
+    remoteRequest(
+      `${API_ENDPOINTS.dashboardCreatorMiniApp(tenantId)}/surfaces/${type}/enabled`,
+      { method: "PUT", body: JSON.stringify({ enabled }) },
+      creatorMiniAppResponseSchema
+    ),
+  publishSurface: (tenantId, surfaceId) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardSurfacePublish(tenantId, surfaceId),
+      { method: "POST" },
+      creatorMiniAppResponseSchema
+    ),
+  getSurfacePreview: (tenantId, surfaceId) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardSurfacePreview(tenantId, surfaceId),
+      undefined,
+      z.object({
+        previewUrl: z.string(),
+        config: creatorMiniAppResponseSchema,
+      })
+    ),
+  connectTelegramBot: (tenantId, token) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardTelegramConnect(tenantId),
+      { method: "POST", body: JSON.stringify({ token }) },
+      telegramIntegrationStatusSchema
+    ),
+  disconnectTelegramBot: (tenantId, integrationId) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardTelegramDisconnect(tenantId),
+      {
+        method: "POST",
+        body: JSON.stringify(integrationId ? { integrationId } : {}),
+      },
+      telegramIntegrationStatusSchema
+    ),
+  validateTelegramBotToken: (tenantId, token) =>
+    remoteRequest(
+      API_ENDPOINTS.dashboardTelegramValidate(tenantId),
+      { method: "POST", body: JSON.stringify({ token }) },
+      validateTelegramBotResponseSchema
+    ),
+  getTelegramIntegrationStatus: async (tenantId) => {
+    try {
+      return await remoteRequest(
+        API_ENDPOINTS.dashboardTelegramStatus(tenantId),
+        undefined,
+        telegramIntegrationStatusSchema
+      );
+    } catch {
+      return null;
+    }
+  },
+  resolvePublicSurface: (type, slug) =>
+    remoteRequest(API_ENDPOINTS.publicSurface(type, slug), undefined, publicSurfaceResponseSchema),
 };

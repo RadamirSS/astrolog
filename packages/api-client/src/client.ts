@@ -28,6 +28,8 @@ function getAdapter(): ApiAdapter {
   return getApiMode() === "mock" ? mockAdapter : remoteAdapter;
 }
 
+export { getAdapter };
+
 export async function getTenantConfig(
   slug: string,
   preview: "draft" | "published" = "published"

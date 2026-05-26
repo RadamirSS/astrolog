@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/ASTRO_API_CONTRACT.md](./ru/ASTRO_API_CONTRACT.md)
+
+---
+
 # Astro API Contract (Report Schema V2)
 
 Base URL (development): `http://localhost:8100`

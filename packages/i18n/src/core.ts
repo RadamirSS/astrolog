@@ -90,7 +90,10 @@ export function t(
   params?: Record<string, string | number>
 ): string {
   const raw = getNestedValue(dictionary, key);
-  if (!raw) return key;
+  if (!raw) {
+    const fallback = params?.defaultValue;
+    return fallback !== undefined ? String(fallback) : key;
+  }
   if (!params) return raw;
   return raw.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = params[name];

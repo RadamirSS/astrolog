@@ -8,50 +8,43 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { DashboardProvider, useDashboard } from "./DashboardProvider";
 import { useAccountRole } from "../../hooks/useAccountRole";
 
-const BUILDER_NAV = [
+const CREATOR_PRIMARY_NAV = [
   { href: "overview", labelKey: "dashboard.layout.overview" },
-  { href: "setup", labelKey: "dashboard.layout.setup" },
-  { href: "brand", labelKey: "dashboard.layout.brand" },
-  { href: "design", labelKey: "dashboard.layout.design" },
-  { href: "content", labelKey: "dashboard.layout.content" },
-  { href: "products", labelKey: "dashboard.layout.products" },
-  { href: "preview", labelKey: "dashboard.layout.preview" },
-  { href: "publish", labelKey: "dashboard.layout.publish" },
-  { href: "settings", labelKey: "dashboard.layout.settings" },
+  { href: "launch/start", labelKey: "dashboard.layout.launchCenter" },
 ] as const;
 
-const OPS_NAV = {
-  sectionKey: "dashboard.layout.operationsSection",
-  items: [
-    { href: "orders", labelKey: "dashboard.layout.orders" },
-    { href: "premium-requests", labelKey: "dashboard.layout.premiumRequests" },
-    { href: "funnel-analytics", labelKey: "dashboard.layout.funnelAnalytics" },
-  ],
-} as const;
+const CREATOR_FINANCE_NAV = [
+  { href: "payments", labelKey: "dashboard.layout.payments" },
+  { href: "balances", labelKey: "dashboard.layout.balances" },
+  { href: "payouts", labelKey: "dashboard.layout.payouts" },
+] as const;
 
-const FINANCE_NAV = {
-  sectionKey: "dashboard.layout.financeSection",
-  items: [
-    { href: "revenue", labelKey: "dashboard.layout.revenue" },
-    { href: "payments", labelKey: "dashboard.layout.payments" },
-    { href: "balances", labelKey: "dashboard.layout.balances" },
-    { href: "ledger", labelKey: "dashboard.layout.ledger" },
-    { href: "product-economics", labelKey: "dashboard.layout.productEconomics" },
-    { href: "commissions", labelKey: "dashboard.layout.commissions" },
-    { href: "payouts", labelKey: "dashboard.layout.payouts" },
-  ],
-} as const;
+const CREATOR_OPS_NAV = [
+  { href: "premium-requests", labelKey: "dashboard.layout.premiumRequests" },
+  { href: "promo-materials", labelKey: "dashboard.layout.promoMaterials" },
+] as const;
 
-const PARTNERS_NAV = {
-  sectionKey: "dashboard.layout.partnersSection",
-  items: [
-    { href: "partners", labelKey: "dashboard.layout.partners" },
-    { href: "partner-links", labelKey: "dashboard.layout.partnerLinks" },
-    { href: "promo-materials", labelKey: "dashboard.layout.promoMaterials" },
-  ],
-} as const;
+const ADMIN_OPS_NAV = [
+  { href: "orders", labelKey: "dashboard.layout.orders" },
+  { href: "premium-requests", labelKey: "dashboard.layout.premiumRequests" },
+  { href: "funnel-analytics", labelKey: "dashboard.layout.funnelAnalytics" },
+] as const;
 
-const FUTURE_NAV = [{ href: "telegram", labelKey: "dashboard.layout.telegram" }] as const;
+const ADMIN_FINANCE_NAV = [
+  { href: "revenue", labelKey: "dashboard.layout.revenue" },
+  { href: "payments", labelKey: "dashboard.layout.payments" },
+  { href: "balances", labelKey: "dashboard.layout.balances" },
+  { href: "commissions", labelKey: "dashboard.layout.commissions" },
+  { href: "payouts", labelKey: "dashboard.layout.payouts" },
+  { href: "ledger", labelKey: "dashboard.layout.ledger" },
+  { href: "product-economics", labelKey: "dashboard.layout.productEconomics" },
+] as const;
+
+const ADMIN_PARTNERS_NAV = [
+  { href: "partners", labelKey: "dashboard.layout.partners" },
+  { href: "partner-links", labelKey: "dashboard.layout.partnerLinks" },
+  { href: "promo-materials", labelKey: "dashboard.layout.promoMaterials" },
+] as const;
 
 function NavLink({
   href,
@@ -64,13 +57,17 @@ function NavLink({
   tenantId: string;
   pathname: string;
 }) {
-  const fullHref = `/${href}?tenantId=${tenantId}`;
-  const active = pathname.includes(`/${href}`);
+  const fullHref = href.includes("#")
+    ? `/${href.split("#")[0]}?tenantId=${tenantId}#${href.split("#")[1]}`
+    : `/${href}?tenantId=${tenantId}`;
+  const pathPart = href.split("#")[0];
+  const isActive = pathname.includes(`/${pathPart}`);
+
   return (
     <Link
       href={fullHref}
-      className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-        active
+      className={`rounded-lg px-3 py-2.5 text-sm transition-colors ${
+        isActive
           ? "bg-violet-600 text-white"
           : "text-slate-400 hover:bg-slate-800 hover:text-white"
       }`}
@@ -118,16 +115,22 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     process.env.NEXT_PUBLIC_DEFAULT_DASHBOARD_TENANT_ID ??
     "tenant_mystic";
   const { config, saving, error, isDirty } = useDashboard();
-  const { account, isPlatformAdmin: admin, hasPartnerScope } = useAccountRole();
-
-  const financeItems = FINANCE_NAV.items.filter((item) => {
-    if (admin) return true;
-    if (!hasPartnerScope) return false;
-    return !["revenue", "ledger", "product-economics"].includes(item.href);
-  });
+  const { isPlatformAdmin: admin, hasPartnerScope } = useAccountRole();
 
   const showFinanceNav = admin || hasPartnerScope;
-  const showPartnersNav = admin || hasPartnerScope;
+
+  const creatorNav = [
+    ...CREATOR_PRIMARY_NAV,
+    ...(showFinanceNav ? CREATOR_FINANCE_NAV : []),
+    { href: "premium-requests", labelKey: "dashboard.layout.premiumRequests" },
+    ...(hasPartnerScope
+      ? [{ href: "promo-materials", labelKey: "dashboard.layout.promoMaterials" } as const]
+      : []),
+    { href: "settings", labelKey: "dashboard.layout.settings" },
+  ];
+
+  const financeNav = admin ? ADMIN_FINANCE_NAV : CREATOR_FINANCE_NAV;
+  const opsNav = admin ? ADMIN_OPS_NAV : CREATOR_OPS_NAV;
 
   const topbar = (
     <>
@@ -155,45 +158,35 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             {config?.brand.displayName ?? t("dashboard.layout.titleFallback")}
           </div>
           <nav className="flex flex-row flex-wrap gap-1 lg:flex-col">
-            {BUILDER_NAV.map((item) => (
-              <NavLink
-                key={item.href}
-                href={item.href}
-                label={t(item.labelKey)}
-                tenantId={tenantId}
-                pathname={pathname}
-              />
-            ))}
-            <NavSection
-              title={t(OPS_NAV.sectionKey)}
-              items={OPS_NAV.items}
-              tenantId={tenantId}
-              pathname={pathname}
-              t={t}
-            />
-            {showFinanceNav && (
-              <NavSection
-                title={t(FINANCE_NAV.sectionKey)}
-                items={financeItems}
-                tenantId={tenantId}
-                pathname={pathname}
-                t={t}
-              />
-            )}
-            {showPartnersNav && (
-              <NavSection
-                title={t(PARTNERS_NAV.sectionKey)}
-                items={PARTNERS_NAV.items}
-                tenantId={tenantId}
-                pathname={pathname}
-                t={t}
-              />
-            )}
-            <div className="mt-4 w-full border-t border-slate-800 pt-4 lg:mt-6">
-              <p className="mb-2 px-3 text-xs uppercase tracking-wide text-slate-500">
-                {t("dashboard.layout.comingLaterSection")}
-              </p>
-              {FUTURE_NAV.map((item) => (
+            {admin ? (
+              <>
+                <NavLink href="overview" label={t("dashboard.layout.overview")} tenantId={tenantId} pathname={pathname} />
+                <NavLink href="launch/start" label={t("dashboard.layout.launchCenter")} tenantId={tenantId} pathname={pathname} />
+                <NavLink href="settings" label={t("dashboard.layout.settings")} tenantId={tenantId} pathname={pathname} />
+                <NavSection
+                  title={t("dashboard.layout.operationsSection")}
+                  items={opsNav}
+                  tenantId={tenantId}
+                  pathname={pathname}
+                  t={t}
+                />
+                <NavSection
+                  title={t("dashboard.layout.financeSection")}
+                  items={financeNav}
+                  tenantId={tenantId}
+                  pathname={pathname}
+                  t={t}
+                />
+                <NavSection
+                  title={t("dashboard.layout.partnersSection")}
+                  items={ADMIN_PARTNERS_NAV}
+                  tenantId={tenantId}
+                  pathname={pathname}
+                  t={t}
+                />
+              </>
+            ) : (
+              creatorNav.map((item) => (
                 <NavLink
                   key={item.href}
                   href={item.href}
@@ -201,8 +194,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   tenantId={tenantId}
                   pathname={pathname}
                 />
-              ))}
-            </div>
+              ))
+            )}
           </nav>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">

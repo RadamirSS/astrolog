@@ -29,19 +29,55 @@ function StarsDecoration() {
   );
 }
 
-function CloudDecoration() {
+function CloudDecoration({ variant }: { variant?: "sky" | "pink" }) {
+  const opacity = variant === "pink" ? 0.7 : 0.55;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <div
-        className="absolute -left-8 top-8 h-16 w-32 rounded-full bg-[var(--vp-ornament)] opacity-60 blur-sm"
+        className="absolute -left-8 top-8 h-20 w-36 rounded-full blur-md"
+        style={{ background: "var(--vp-ornament)", opacity }}
       />
       <div
-        className="absolute -right-4 top-24 h-12 w-28 rounded-full bg-[var(--vp-ornament)] opacity-50 blur-sm"
+        className="absolute -right-4 top-24 h-16 w-32 rounded-full blur-md"
+        style={{ background: "var(--vp-ornament)", opacity: opacity - 0.1 }}
       />
       <div
-        className="absolute bottom-16 left-1/4 h-14 w-36 rounded-full bg-[var(--vp-ornament)] opacity-40 blur-sm"
+        className="absolute bottom-16 left-1/4 h-16 w-40 rounded-full blur-md"
+        style={{ background: "var(--vp-ornament)", opacity: opacity - 0.15 }}
       />
+      {variant === "sky" && (
+        <div
+          className="absolute right-8 top-12 h-3 w-3 rounded-full"
+          style={{ background: "var(--vp-accent)", opacity: 0.85, boxShadow: "0 0 12px var(--vp-accent)" }}
+        />
+      )}
     </div>
+  );
+}
+
+function ZodiacDots() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {[...Array(8)].map((_, i) => (
+        <span
+          key={i}
+          className="absolute rounded-full border border-[var(--vp-accent-muted)]"
+          style={{
+            width: 6 + (i % 3) * 2,
+            height: 6 + (i % 3) * 2,
+            top: `${12 + i * 10}%`,
+            left: `${10 + (i * 13) % 80}%`,
+            opacity: 0.35,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CandleGlow() {
+  return (
+    <div className="pointer-events-none absolute bottom-8 left-6 h-16 w-16 rounded-full blur-2xl" aria-hidden style={{ background: "var(--vp-accent)", opacity: 0.25 }} />
   );
 }
 
@@ -60,7 +96,10 @@ function MoonDecoration() {
 
 function OrnamentFrame() {
   return (
-    <div className="pointer-events-none absolute inset-2 rounded-xl border border-[var(--vp-accent-muted)] opacity-40" aria-hidden />
+    <>
+      <div className="pointer-events-none absolute inset-2 rounded-xl border border-[var(--vp-accent-muted)] opacity-50" aria-hidden />
+      <div className="pointer-events-none absolute inset-4 rounded-lg border border-[var(--vp-accent)] opacity-20" aria-hidden />
+    </>
   );
 }
 
@@ -69,6 +108,7 @@ export function AstroBackground({ pack, className = "", children }: AstroBackgro
   const showClouds = pack === "sky_clarity" || pack === "pink_love";
   const showMoon = pack === "dark_gold_mystic" || pack === "pink_love";
   const showOrnament = pack === "dark_gold_mystic";
+  const cloudVariant = pack === "pink_love" ? "pink" : "sky";
 
   return (
     <div
@@ -76,9 +116,11 @@ export function AstroBackground({ pack, className = "", children }: AstroBackgro
       style={{ background: "var(--vp-gradient, var(--color-bg))" }}
     >
       {showStars && <StarsDecoration />}
-      {showClouds && <CloudDecoration />}
+      {pack === "cosmic_pastel" && <ZodiacDots />}
+      {showClouds && <CloudDecoration variant={cloudVariant} />}
       {showMoon && <MoonDecoration />}
       {showOrnament && <OrnamentFrame />}
+      {showOrnament && <CandleGlow />}
       {children}
     </div>
   );

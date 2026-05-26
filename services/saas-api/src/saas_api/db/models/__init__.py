@@ -10,6 +10,7 @@ from saas_api.db.models.ledger_entry import LedgerEntry
 from saas_api.db.models.media_asset import MediaAsset
 from saas_api.db.models.order import Order
 from saas_api.db.models.order_event import OrderEvent
+from saas_api.db.models.partner import Partner
 from saas_api.db.models.partner_balance import PartnerBalance
 from saas_api.db.models.payment import Payment
 from saas_api.db.models.payout import Payout
@@ -33,6 +34,7 @@ __all__ = [
     "MediaAsset",
     "Order",
     "OrderEvent",
+    "Partner",
     "PartnerBalance",
     "Payment",
     "Payout",

@@ -9,6 +9,7 @@ export * from "./product-catalog";
 export * from "./report-v2-mock";
 export * from "./visual-pack";
 export * from "./report-library";
+export * from "./surfaces";
 export * from "./public-miniapp";
 
 import { tenantConfigSchema } from "./schema";

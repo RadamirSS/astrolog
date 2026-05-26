@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/SAAS_API_CONTRACT.md](./ru/SAAS_API_CONTRACT.md)
+
+---
+
 # SaaS API Contract
 
 Base URL (development): `http://localhost:8000`

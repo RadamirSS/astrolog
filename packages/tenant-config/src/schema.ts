@@ -41,6 +41,88 @@ export const funnelTopicSchema = z.enum(["money", "relationships", "personality"
 
 export const miniAppPublicStatusSchema = z.enum(["draft", "published", "paused"]);
 
+export const surfaceTypeSchema = z.enum(["telegram_mini_app", "website", "mobile_web"]);
+
+export const surfaceStatusSchema = z.enum([
+  "disabled",
+  "draft",
+  "configured",
+  "published",
+  "error",
+]);
+
+export const telegramBotStatusSchema = z.enum([
+  "not_connected",
+  "connected",
+  "invalid_token",
+  "webhook_configured",
+  "error",
+]);
+
+export const telegramSurfaceConfigSchema = z.object({
+  botIntegrationId: z.string().optional(),
+  botUsername: z.string().optional(),
+  botDisplayName: z.string().optional(),
+  botStatus: telegramBotStatusSchema,
+  miniAppUrl: z.string().optional(),
+  deepLink: z.string().optional(),
+  webhookStatus: z.enum(["pending", "configured", "error"]).optional(),
+  lastValidatedAt: z.string().optional(),
+  errorMessage: z.string().optional(),
+});
+
+export const websiteSurfaceConfigSchema = z.object({
+  slug: z.string(),
+  publicUrl: z.string().optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  status: surfaceStatusSchema.optional(),
+  previewUrl: z.string().optional(),
+});
+
+export const mobileWebSurfaceConfigSchema = z.object({
+  publicUrl: z.string().optional(),
+  installableHintEnabled: z.boolean().optional(),
+  bottomNavEnabled: z.boolean().optional(),
+  status: surfaceStatusSchema.optional(),
+});
+
+export const surfaceConfigSchema = z.object({
+  id: z.string(),
+  type: surfaceTypeSchema,
+  status: surfaceStatusSchema,
+  publicUrl: z.string().optional(),
+  previewUrl: z.string().optional(),
+  configJson: z.union([
+    telegramSurfaceConfigSchema,
+    websiteSurfaceConfigSchema,
+    mobileWebSurfaceConfigSchema,
+  ]),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  publishedAt: z.string().optional(),
+});
+
+export const creatorMiniAppConfigSchema = z.object({
+  publicSlug: z
+    .string()
+    .min(2)
+    .regex(/^[a-z0-9-]+$/, "Public slug must be lowercase alphanumeric with hyphens"),
+  visualPack: visualPackSchema,
+  defaultTopic: funnelTopicSchema.nullable(),
+  publicStatus: miniAppPublicStatusSchema,
+  partnerId: z.string().optional(),
+  partnerSlug: z.string().optional(),
+  partnerName: z.string().optional(),
+  partnerStatus: z.enum(["active", "paused", "blocked"]).optional(),
+  campaignId: z.string().optional(),
+  introCopy: z.string().optional(),
+  welcomeMessage: z.string().optional(),
+  promoCtaCopy: z.string().optional(),
+  name: z.string().optional(),
+  surfaces: z.array(surfaceConfigSchema).optional(),
+});
+
 export const productFaqItemSchema = z.object({
   question: z.string().min(1),
   answer: z.string().min(1),
@@ -174,25 +256,7 @@ export const tenantConfigSchema = z.object({
     analytics: z.object({ enabled: z.literal(false) }).optional(),
   }),
   products: z.array(productConfigSchema),
-  miniApp: z
-    .object({
-      publicSlug: z
-        .string()
-        .min(2)
-        .regex(/^[a-z0-9-]+$/, "Public slug must be lowercase alphanumeric with hyphens"),
-      visualPack: visualPackSchema,
-      defaultTopic: funnelTopicSchema.nullable(),
-      publicStatus: miniAppPublicStatusSchema,
-      partnerId: z.string().optional(),
-      partnerSlug: z.string().optional(),
-      partnerName: z.string().optional(),
-      partnerStatus: z.enum(["active", "paused", "blocked"]).optional(),
-      campaignId: z.string().optional(),
-      introCopy: z.string().optional(),
-      welcomeMessage: z.string().optional(),
-      promoCtaCopy: z.string().optional(),
-    })
-    .optional(),
+  miniApp: creatorMiniAppConfigSchema.optional(),
   locales: z
     .object({
       ru: z

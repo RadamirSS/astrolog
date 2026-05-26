@@ -10,6 +10,7 @@ from saas_api.db.models.tenant_config import ConfigKind, TenantConfig
 from saas_api.db.models.tenant_member import TenantMember, TenantMemberRole
 from saas_api.db.session import get_session_factory, init_db
 from saas_api.services.integration_service import ensure_default_integration_statuses
+from saas_api.services.partner_service import ensure_partner_from_config, seed_demo_partners
 from saas_api.services.seed_builder import DEMO_TENANTS, publish_config_copy
 from saas_api.settings import settings
 
@@ -184,6 +185,10 @@ def run_seed() -> None:
                 blogger_account=blogger,
                 admin_account=admin,
             )
+            mini_app = published.get("miniApp") or {}
+            brand = published.get("brand") or {}
+            ensure_partner_from_config(db, demo["id"], mini_app, brand=brand)
+            seed_demo_partners(db, demo["id"])
 
         db.commit()
         print("Seed completed successfully.")

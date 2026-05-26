@@ -39,6 +39,8 @@ class Settings(BaseServiceSettings):
 
     telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
     allow_dev_telegram_auth: bool = Field(default=False, alias="ALLOW_DEV_TELEGRAM_AUTH")
+    telegram_bot_setup_mode: str = Field(default="mock", alias="TELEGRAM_BOT_SETUP_MODE")
+    telegram_token_encryption_key: str = Field(default="", alias="TELEGRAM_TOKEN_ENCRYPTION_KEY")
     astro_api_base_url: str = Field(default="http://localhost:8100", alias="ASTRO_API_BASE_URL")
     astro_api_timeout_seconds: int = Field(default=20, alias="ASTRO_API_TIMEOUT_SECONDS")
     astro_api_mode: str = Field(default="mock", alias="ASTRO_API_MODE")
@@ -63,6 +65,9 @@ class Settings(BaseServiceSettings):
     media_max_upload_mb: int = Field(default=5, alias="MEDIA_MAX_UPLOAD_MB")
 
     commission_hold_days: int = Field(default=7, alias="COMMISSION_HOLD_DAYS")
+    platform_default_commission_rate: float = Field(
+        default=0.5, alias="PLATFORM_DEFAULT_COMMISSION_RATE"
+    )
 
 
 settings = Settings()

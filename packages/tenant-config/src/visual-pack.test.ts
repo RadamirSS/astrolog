@@ -40,8 +40,11 @@ describe("visual pack mapping", () => {
   });
 
   it("returns human-readable labels", () => {
+    assert.equal(getVisualPackLabel("sky_clarity", "ru"), "Небо и ясность");
     assert.equal(getVisualPackLabel("dark_gold_mystic", "ru"), "Тёмное золото");
-    assert.equal(getVisualPackLabel("pink_love", "en"), "Pink Love");
+    assert.equal(getVisualPackLabel("pink_love", "ru"), "Розовая Луна");
+    assert.equal(getVisualPackLabel("cosmic_pastel", "ru"), "Космическая пастель");
+    assert.equal(getVisualPackLabel("pink_love", "en"), "Pink Moon");
   });
 
   it("getVisualPackForReport uses report visualPack", () => {

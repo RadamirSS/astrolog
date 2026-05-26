@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/ENVIRONMENT_VARIABLES.md](./ru/ENVIRONMENT_VARIABLES.md)
+
+---
+
 # Environment Variables
 
 Reference for Astro Platform deployment. Templates:
@@ -38,6 +42,8 @@ Mock mode remains available for frontend-only development without a backend.
 | `SAAS_COOKIE_DOMAIN` | Cookie domain (optional) | e.g. `.example.com` |
 | `CORS_ORIGINS` | Comma-separated frontend origins | Explicit list only |
 | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather | Required in production |
+| `TELEGRAM_BOT_SETUP_MODE` | Per-creator bot connect mode | `mock` (dev) or `remote` (prod) |
+| `TELEGRAM_TOKEN_ENCRYPTION_KEY` | Fernet key for per-tenant bot tokens | Required when `TELEGRAM_BOT_SETUP_MODE=remote` in production |
 | `ALLOW_DEV_TELEGRAM_AUTH` | Dev session bypass | **Must be `false`** in staging/prod |
 | `ASTRO_API_BASE_URL` | Internal Astro API URL | Internal network URL |
 | `ASTRO_API_TIMEOUT_SECONDS` | Report generation timeout | 20 default |

@@ -78,6 +78,10 @@ export const API_ENDPOINTS = {
     const search = partnerId ? `?partnerId=${partnerId}` : "";
     return `/api/dashboard/tenants/${tenantId}/ops/payouts${search}`;
   },
+  dashboardOpsPayoutMethods: (tenantId: string, partnerId?: string) => {
+    const search = partnerId ? `?partnerId=${partnerId}` : "";
+    return `/api/dashboard/tenants/${tenantId}/ops/payout-methods${search}`;
+  },
   dashboardOpsPayout: (tenantId: string, payoutId: string) =>
     `/api/dashboard/tenants/${tenantId}/ops/payouts/${payoutId}`,
   dashboardOpsPayments: (tenantId: string, params?: Record<string, string | undefined>) => {
@@ -98,6 +102,8 @@ export const API_ENDPOINTS = {
   },
   dashboardOpsBalance: (tenantId: string, partnerId: string, currency = "USD") =>
     `/api/dashboard/tenants/${tenantId}/ops/balances/${partnerId}?currency=${currency}`,
+  dashboardOpsBalanceVerify: (tenantId: string, partnerId: string, currency = "USD") =>
+    `/api/dashboard/tenants/${tenantId}/ops/balances/${partnerId}/verify?currency=${currency}`,
   dashboardOpsBalanceAdjustment: (tenantId: string, partnerId: string) =>
     `/api/dashboard/tenants/${tenantId}/ops/balances/${partnerId}/adjustments`,
   dashboardOpsLedger: (tenantId: string, params?: Record<string, string | undefined>) => {
@@ -156,4 +162,28 @@ export const API_ENDPOINTS = {
   dashboardOpsEntitlementUnlock: (tenantId: string, orderId: string) =>
     `/api/dashboard/tenants/${tenantId}/ops/orders/${orderId}/entitlement/unlock`,
   publicPartner: (slug: string) => `/api/public/partners/${slug}`,
+  publicMiniApp: (slug: string) => `/api/public/miniapps/${slug}`,
+  publicSurface: (type: "telegram" | "website" | "mobile", slug: string) =>
+    `/api/public/surfaces/${type}/${slug}`,
+  dashboardCreatorMiniApp: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/mini-app`,
+  dashboardCreatorMiniAppPublish: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/mini-app/publish`,
+  dashboardCreatorMiniAppUnpublish: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/mini-app/unpublish`,
+  dashboardSurface: (tenantId: string, surfaceId: string) =>
+    `/api/dashboard/tenants/${tenantId}/surfaces/${surfaceId}`,
+  dashboardSurfacePublish: (tenantId: string, surfaceId: string) =>
+    `/api/dashboard/tenants/${tenantId}/surfaces/${surfaceId}/publish`,
+  dashboardSurfacePreview: (tenantId: string, surfaceId: string) =>
+    `/api/dashboard/tenants/${tenantId}/surfaces/${surfaceId}/preview`,
+  dashboardTelegramConnect: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/telegram/connect`,
+  dashboardTelegramDisconnect: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/telegram/disconnect`,
+  dashboardTelegramValidate: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/telegram/validate`,
+  dashboardTelegramStatus: (tenantId: string) =>
+    `/api/dashboard/tenants/${tenantId}/telegram/status`,
+  telegramWebhook: (integrationId: string) => `/api/telegram/webhook/${integrationId}`,
 } as const;

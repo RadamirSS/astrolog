@@ -7,62 +7,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from backend_common.errors import ApiErrorCode, AppError
+from saas_api.services.approved_product_catalog import APPROVED_PRODUCTS
 from saas_api.services.config_service import get_published_config
-
-APPROVED_PRODUCTS: dict[str, dict[str, Any]] = {
-    "free_report": {
-        "productType": "free_report",
-        "level": "free",
-        "price": 0.0,
-        "currency": "USD",
-        "purchasable": False,
-    },
-    "low_ticket_money": {
-        "productType": "low_ticket_money",
-        "level": "low_ticket",
-        "theme": "money",
-        "price": 29.0,
-        "currency": "USD",
-        "purchasable": True,
-    },
-    "low_ticket_relationships": {
-        "productType": "low_ticket_relationships",
-        "level": "low_ticket",
-        "theme": "relationships",
-        "price": 29.0,
-        "currency": "USD",
-        "purchasable": True,
-    },
-    "low_ticket_personality": {
-        "productType": "low_ticket_personality",
-        "level": "low_ticket",
-        "theme": "personality",
-        "price": 29.0,
-        "currency": "USD",
-        "purchasable": True,
-    },
-    "bundle_all_topics": {
-        "productType": "bundle_all_topics",
-        "level": "bundle",
-        "price": 79.0,
-        "currency": "USD",
-        "purchasable": True,
-    },
-    "main_natal_portrait": {
-        "productType": "main_natal_portrait",
-        "level": "main",
-        "price": 149.0,
-        "currency": "USD",
-        "purchasable": True,
-    },
-    "premium_consultation": {
-        "productType": "premium_consultation",
-        "level": "premium",
-        "price": 0.0,
-        "currency": "USD",
-        "purchasable": False,
-    },
-}
 
 
 def _catalog_for_product_type(product_type: str) -> dict[str, Any]:

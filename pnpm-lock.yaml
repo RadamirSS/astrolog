@@ -72,6 +72,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19(tsx@4.22.3)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -269,6 +272,9 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -393,6 +399,9 @@ importers:
       '@astro/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/tsconfig
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

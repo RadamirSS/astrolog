@@ -17,6 +17,7 @@ from saas_api.db.models import (  # noqa: F401
     MediaAsset,
     Order,
     OrderEvent,
+    Partner,
     PartnerBalance,
     Payment,
     Payout,

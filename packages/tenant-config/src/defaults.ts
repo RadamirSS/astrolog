@@ -1,11 +1,12 @@
-import type { MiniAppConfig, ProductConfig, TenantConfig, ThemePreset, VisualPack } from "./types";
+import type { CreatorMiniAppConfig, MiniAppConfig, ProductConfig, TenantConfig, ThemePreset, VisualPack } from "./types";
 import { createRealProductLine } from "./product-catalog";
+import { ensureSurfaces } from "./surfaces";
 
 export function createDefaultMiniApp(
   slug: string,
   visualPack: VisualPack = "cosmic_pastel"
-): MiniAppConfig {
-  return {
+): CreatorMiniAppConfig {
+  const base: MiniAppConfig = {
     publicSlug: slug,
     visualPack,
     defaultTopic: null,
@@ -14,6 +15,7 @@ export function createDefaultMiniApp(
     welcomeMessage: "",
     promoCtaCopy: "",
   };
+  return ensureSurfaces(base, slug);
 }
 
 export function createDefaultProducts(tenantSlug: string): ProductConfig[] {

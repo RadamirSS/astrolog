@@ -4,4 +4,5 @@ export * from "./handlers/ops";
 export * from "./fixtures/ops";
 export * from "./fixtures/ops/premium-request-store";
 export * from "./handlers/premium-requests";
+export * from "./handlers/creator";
 export * from "./aliases";

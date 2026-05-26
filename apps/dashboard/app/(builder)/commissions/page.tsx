@@ -9,116 +9,148 @@ import {
 } from "@astro/api-client";
 import { LoadingState, SectionCard, StatCard } from "@astro/ui";
 import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useT } from "@astro/i18n";
 import {
+  OpsActionButton,
   OpsPageHeader,
   OpsStatusBadge,
   OpsTable,
-  formatDate,
-  formatMoney,
+  formatDateLocale,
+  formatMoneyLocale,
+  maskOrderId,
+  useOpsLocale,
 } from "../../../components/ops/OpsShared";
 import { useAccountRole } from "../../../hooks/useAccountRole";
 import { useOpsQuery } from "../../../hooks/useOpsData";
 
 export default function CommissionsPage() {
+  const t = useT();
+  const locale = useOpsLocale();
   const searchParams = useSearchParams();
   const tenantId =
     searchParams.get("tenantId") ??
     process.env.NEXT_PUBLIC_DEFAULT_DASHBOARD_TENANT_ID ??
     "tenant_mystic";
   const q = `?tenantId=${tenantId}`;
-  const { isPlatformAdmin: admin } = useAccountRole();
+  const { isPlatformAdmin: admin, account } = useAccountRole();
+  const partnerId = account?.partnerId ?? undefined;
 
   const { data: commissions, loading, error, reload } = useOpsQuery(
-    () => listCommissions(tenantId),
-    [tenantId]
+    () => listCommissions(tenantId, admin ? undefined : partnerId),
+    [tenantId, partnerId, admin]
   );
-  const { data: summary } = useOpsQuery(() => getCommissionSummary(tenantId), [tenantId]);
+  const { data: summary } = useOpsQuery(
+    () => getCommissionSummary(tenantId, admin ? undefined : partnerId),
+    [tenantId, partnerId, admin]
+  );
 
-  if (loading) return <LoadingState message="Loading commissions..." className="text-slate-400" />;
+  const visibleCommissions = useMemo(() => {
+    if (admin || !partnerId) return commissions ?? [];
+    return (commissions ?? []).filter((c) => c.partnerId === partnerId);
+  }, [commissions, admin, partnerId]);
+
+  if (loading) return <LoadingState message={t("dashboard.finance.loading")} className="text-slate-400" />;
   if (error) return <p className="text-red-400">{error}</p>;
+
+  const creatorColumns = [
+    { key: "date", label: t("dashboard.finance.date") },
+    { key: "product", label: t("dashboard.finance.product") },
+    { key: "order", label: t("dashboard.finance.order") },
+    { key: "gross", label: t("dashboard.finance.saleAmount") },
+    { key: "amount", label: t("dashboard.finance.yourCommission") },
+    { key: "status", label: t("dashboard.finance.statusColumn") },
+    { key: "availableFrom", label: t("dashboard.finance.availableFrom") },
+  ];
+
+  const adminColumns = [
+    ...creatorColumns,
+    { key: "partner", label: t("dashboard.finance.partner") },
+    { key: "actions", label: t("dashboard.finance.actions") },
+  ];
 
   return (
     <div className="space-y-6">
-      <OpsPageHeader title="Commissions" subtitle="Partner commission lifecycle with hold period" />
+      <OpsPageHeader
+        title={t("dashboard.finance.accrualsTitle")}
+        subtitle={t("dashboard.finance.accrualsSubtitle")}
+      />
+
+      <p className="text-sm text-slate-400">{t("dashboard.finance.accrualsExplain")}</p>
 
       {summary && (
-        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-7">
-          <StatCard label="Pending" value={formatMoney(summary.pending)} />
-          <StatCard label="Available" value={formatMoney(summary.available)} />
-          <StatCard label="On hold" value={formatMoney(summary.onHold)} />
-          <StatCard label="Approved" value={formatMoney(summary.approved)} />
-          <StatCard label="Paid" value={formatMoney(summary.paid)} />
-          <StatCard label="Adjusted" value={formatMoney(summary.adjusted)} />
-          <StatCard label="Cancelled" value={formatMoney(summary.cancelled)} />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label={t("dashboard.finance.explainPending")}
+            value={formatMoneyLocale(summary.pending, "USD", locale)}
+          />
+          <StatCard
+            label={t("dashboard.finance.explainAvailable")}
+            value={formatMoneyLocale(summary.available, "USD", locale)}
+          />
+          <StatCard
+            label={t("dashboard.finance.explainHold")}
+            value={formatMoneyLocale(summary.onHold, "USD", locale)}
+          />
+          <StatCard
+            label={t("dashboard.finance.explainPaidOut")}
+            value={formatMoneyLocale(summary.paid, "USD", locale)}
+          />
         </div>
       )}
 
-      <SectionCard title="Commission records">
-        <OpsTable
-          columns={[
-            { key: "id", label: "ID" },
-            { key: "partner", label: "Partner" },
-            { key: "order", label: "Order" },
-            { key: "product", label: "Product" },
-            { key: "gross", label: "Gross" },
-            { key: "rate", label: "Rate" },
-            { key: "amount", label: "Commission" },
-            { key: "status", label: "Status" },
-            { key: "hold", label: "Hold until" },
-            { key: "available", label: "Available at" },
-            { key: "actions", label: "Actions" },
-          ]}
-          rows={(commissions ?? []).map((c) => ({
-            id: c.id,
-            partner: (
-              <Link href={`/partners/${c.partnerId}${q}`} className="text-violet-400 hover:underline">
-                {c.partnerName ?? c.partnerId}
-              </Link>
-            ),
-            order: (
+      <SectionCard title={t("dashboard.finance.accrualsTitle")}>
+        {visibleCommissions.length === 0 && !admin ? (
+          <p className="text-sm text-slate-400">{t("dashboard.finance.emptyCommissions")}</p>
+        ) : (
+          <OpsTable
+            columns={admin ? adminColumns : creatorColumns}
+            rows={visibleCommissions.map((c) => ({
+            date: formatDateLocale(c.createdAt, locale),
+            product: c.productTitle ?? c.productType,
+            order: admin ? (
               <Link href={`/orders/${c.orderId}${q}`} className="text-violet-400 hover:underline">
                 {c.orderId}
               </Link>
+            ) : (
+              maskOrderId(c.orderId)
             ),
-            product: c.productTitle ?? c.productType,
-            gross: formatMoney(c.grossAmount),
-            rate: `${Math.round(c.commissionRate * 100)}%`,
-            amount: formatMoney(c.commissionAmount),
-            status: <OpsStatusBadge status={c.status} />,
-            hold: c.holdUntil ? formatDate(c.holdUntil) : "—",
-            available: c.availableAt ? formatDate(c.availableAt) : "—",
+            gross: formatMoneyLocale(c.grossAmount, "USD", locale),
+            amount: formatMoneyLocale(c.commissionAmount, "USD", locale),
+            status: <OpsStatusBadge status={c.status} category="commission" />,
+            availableFrom: c.availableAt ? formatDateLocale(c.availableAt, locale) : "—",
+            partner: admin ? (
+              <Link href={`/partners/${c.partnerId}${q}`} className="text-violet-400 hover:underline">
+                {c.partnerName ?? c.partnerId}
+              </Link>
+            ) : undefined,
             actions: admin ? (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-2">
                 {(c.status === "pending" || c.status === "on_hold") && (
-                  <button
-                    type="button"
-                    className="rounded bg-violet-700 px-2 py-1 text-xs"
+                  <OpsActionButton
+                    label={t("dashboard.finance.release")}
+                    variant="primary"
                     onClick={async () => {
                       await releaseCommission(tenantId, c.id);
                       await reload();
                     }}
-                  >
-                    Release
-                  </button>
+                  />
                 )}
                 {(c.status === "pending" || c.status === "available") && (
-                  <button
-                    type="button"
-                    className="rounded bg-amber-800 px-2 py-1 text-xs"
+                  <OpsActionButton
+                    label={t("dashboard.finance.hold")}
+                    variant="warning"
                     onClick={async () => {
-                      await holdCommission(tenantId, c.id, "Manual hold");
+                      await holdCommission(tenantId, c.id, t("dashboard.finance.manualHoldReason"));
                       await reload();
                     }}
-                  >
-                    Hold
-                  </button>
+                  />
                 )}
               </div>
-            ) : (
-              "—"
-            ),
+            ) : undefined,
           }))}
-        />
+          />
+        )}
       </SectionCard>
     </div>
   );

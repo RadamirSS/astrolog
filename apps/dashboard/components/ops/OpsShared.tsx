@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { getFinanceStatusLabel, getFinanceStatusVariant, useI18n, useT } from "@astro/i18n";
+import type { FinanceStatusCategory } from "@astro/i18n";
 import { Badge } from "@astro/ui";
 
 interface CopyButtonProps {
@@ -8,8 +10,37 @@ interface CopyButtonProps {
   label?: string;
 }
 
-export function CopyButton({ value, label = "Copy" }: CopyButtonProps) {
+export function useOpsLocale() {
+  const { locale } = useI18n();
+  return locale;
+}
+
+export function formatMoneyLocale(amount: number, currency = "USD", locale?: string): string {
+  const loc = locale === "ru" ? "ru-RU" : "en-US";
+  return new Intl.NumberFormat(loc, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function formatMoney(amount: number, currency = "USD"): string {
+  return formatMoneyLocale(amount, currency, "en");
+}
+
+export function formatDateLocale(iso: string, locale?: string): string {
+  const loc = locale === "ru" ? "ru-RU" : undefined;
+  return new Date(iso).toLocaleString(loc);
+}
+
+export function formatDate(iso: string): string {
+  return formatDateLocale(iso);
+}
+
+export function CopyButton({ value, label }: CopyButtonProps) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
+  const copyLabel = label ?? t("dashboard.finance.copy");
 
   return (
     <button
@@ -21,21 +52,22 @@ export function CopyButton({ value, label = "Copy" }: CopyButtonProps) {
       }}
       className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700"
     >
-      {copied ? "Copied!" : label}
+      {copied ? t("dashboard.finance.copied") : copyLabel}
     </button>
   );
 }
 
-export function OpsStatusBadge({ status }: { status: string }) {
-  const variant =
-    status === "paid" || status === "ready" || status === "active" || status === "approved"
-      ? "success"
-      : status === "pending" || status === "payment_pending" || status === "generating" || status === "queued"
-        ? "warning"
-        : status === "failed" || status === "cancelled" || status === "blocked" || status === "refunded"
-          ? "error"
-          : "info";
-  return <Badge variant={variant}>{status}</Badge>;
+export function OpsStatusBadge({
+  status,
+  category,
+}: {
+  status: string;
+  category?: FinanceStatusCategory;
+}) {
+  const { locale } = useI18n();
+  const variant = getFinanceStatusVariant(status);
+  const label = getFinanceStatusLabel(status, locale, category);
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
 interface OpsTableProps {
@@ -44,9 +76,11 @@ interface OpsTableProps {
   emptyMessage?: string;
 }
 
-export function OpsTable({ columns, rows, emptyMessage = "No data" }: OpsTableProps) {
+export function OpsTable({ columns, rows, emptyMessage }: OpsTableProps) {
+  const t = useT();
+  const empty = emptyMessage ?? t("dashboard.finance.noData");
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-400">{emptyMessage}</p>;
+    return <p className="text-sm text-slate-400">{empty}</p>;
   }
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-800">
@@ -91,18 +125,49 @@ export function OpsPageHeader({
   );
 }
 
-export function formatMoney(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
-
 export function formatPct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+export function maskBuyerId(id: string | undefined | null): string {
+  if (!id) return "—";
+  if (id.length <= 8) return id;
+  return `${id.slice(0, 4)}…${id.slice(-3)}`;
+}
+
+export function maskOrderId(id: string | undefined | null): string {
+  if (!id) return "—";
+  if (id.length <= 10) return id;
+  return `${id.slice(0, 6)}…${id.slice(-4)}`;
+}
+
+const ACTION_VARIANTS = {
+  primary: "bg-violet-700 hover:bg-violet-600 text-white",
+  success: "bg-emerald-800 hover:bg-emerald-700 text-white",
+  danger: "bg-red-900 hover:bg-red-800 text-white",
+  neutral: "bg-slate-700 hover:bg-slate-600 text-white",
+  warning: "bg-amber-800 hover:bg-amber-700 text-white",
+} as const;
+
+export function OpsActionButton({
+  label,
+  onClick,
+  variant = "primary",
+  disabled,
+}: {
+  label: string;
+  onClick: () => void | Promise<void>;
+  variant?: keyof typeof ACTION_VARIANTS;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => void onClick()}
+      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${ACTION_VARIANTS[variant]}`}
+    >
+      {label}
+    </button>
+  );
 }

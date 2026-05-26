@@ -13,6 +13,7 @@ import {
   formatMoney,
 } from "../../../components/ops/OpsShared";
 import { useOpsQuery } from "../../../hooks/useOpsData";
+import { useAccountRole } from "../../../hooks/useAccountRole";
 
 type OrderFilters = {
   status?: string;
@@ -31,22 +32,25 @@ export default function OrdersPage() {
   const [status, setStatus] = useState<string>("");
   const [productType, setProductType] = useState<string>("");
   const [partnerId, setPartnerId] = useState<string>("");
+  const { isPlatformAdmin, hasPartnerScope, account, loading: roleLoading } = useAccountRole();
+
+  const effectivePartnerId = isPlatformAdmin ? partnerId : account?.partnerId ?? "";
 
   const params = useMemo((): OrderFilters | undefined => {
     const p: OrderFilters = {};
     if (status) p.status = status;
     if (productType) p.productType = productType;
-    if (partnerId) p.partnerId = partnerId;
+    if (effectivePartnerId) p.partnerId = effectivePartnerId;
     return Object.keys(p).length ? p : undefined;
-  }, [status, productType, partnerId]);
+  }, [status, productType, effectivePartnerId]);
 
   const { data: orders, loading, error } = useOpsQuery(
     () =>
       listOrders(tenantId, params as Parameters<typeof listOrders>[1]),
-    [tenantId, status, productType, partnerId]
+    [tenantId, status, productType, effectivePartnerId]
   );
 
-  if (loading) return <LoadingState message="Loading orders..." className="text-slate-400" />;
+  if (loading || roleLoading) return <LoadingState message="Loading orders..." className="text-slate-400" />;
   if (error) return <p className="text-red-400">{error}</p>;
 
   const rows = (orders ?? []).map((o) => ({
@@ -108,16 +112,23 @@ export default function OrdersPage() {
             <option value="main_natal_portrait">Полный портрет</option>
             <option value="premium_consultation">Premium</option>
           </select>
-          <select
-            value={partnerId}
-            onChange={(e) => setPartnerId(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-          >
-            <option value="">All partners</option>
-            <option value="partner_nicole">nicole</option>
-            <option value="partner_luna">luna-guide</option>
-            <option value="partner_mira">astro-mira</option>
-          </select>
+          {isPlatformAdmin && (
+            <select
+              value={partnerId}
+              onChange={(e) => setPartnerId(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+            >
+              <option value="">All partners</option>
+              <option value="partner_nicole">nicole</option>
+              <option value="partner_luna">luna-guide</option>
+              <option value="partner_mira">astro-mira</option>
+            </select>
+          )}
+          {hasPartnerScope && !isPlatformAdmin && (
+            <span className="self-center text-sm text-slate-400">
+              Partner: {account?.partnerId}
+            </span>
+          )}
         </div>
       </SectionCard>
 

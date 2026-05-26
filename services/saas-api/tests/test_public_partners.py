@@ -56,3 +56,33 @@ def test_public_partner_topic_links(client: TestClient):
     links = response.json()["data"]["publicLinks"]
     assert links["relationships"] == "/b/nicole/relationships"
     assert links["personality"] == "/b/nicole/personality"
+
+
+def test_public_miniapps_alias_resolves(client: TestClient):
+    response = client.get("/api/public/miniapps/nicole")
+    assert response.status_code == 200
+    assert response.json()["data"]["partnerSlug"] == "nicole"
+
+
+def test_public_partner_draft_unavailable(client: TestClient, seeded_db: Session):
+    row = (
+        seeded_db.query(TenantConfig)
+        .filter(
+            TenantConfig.tenant_id == "tenant_mystic",
+            TenantConfig.kind == ConfigKind.PUBLISHED,
+        )
+        .first()
+    )
+    assert row is not None
+    config = dict(row.config_json)
+    config["miniApp"] = {
+        **(config.get("miniApp") or {}),
+        "publicSlug": "draft-only-slug",
+        "publicStatus": "draft",
+        "partnerStatus": "active",
+    }
+    row.config_json = config
+    seeded_db.commit()
+
+    response = client.get("/api/public/partners/draft-only-slug")
+    assert response.status_code == 403

@@ -3,14 +3,19 @@
 import { getProductEconomics } from "@astro/api-client";
 import { LoadingState, SectionCard } from "@astro/ui";
 import { useSearchParams } from "next/navigation";
+import { useT } from "@astro/i18n";
+import { FinanceAdminGuard } from "../../../components/ops/FinanceAdminGuard";
 import {
   OpsPageHeader,
   OpsTable,
-  formatMoney,
+  formatMoneyLocale,
+  useOpsLocale,
 } from "../../../components/ops/OpsShared";
 import { useOpsQuery } from "../../../hooks/useOpsData";
 
-export default function ProductEconomicsPage() {
+function ProductEconomicsPageContent() {
+  const t = useT();
+  const locale = useOpsLocale();
   const searchParams = useSearchParams();
   const tenantId =
     searchParams.get("tenantId") ??
@@ -22,28 +27,28 @@ export default function ProductEconomicsPage() {
     [tenantId]
   );
 
-  if (loading) return <LoadingState message="Loading product economics..." className="text-slate-400" />;
+  if (loading) return <LoadingState message={t("dashboard.finance.loading")} className="text-slate-400" />;
   if (error) return <p className="text-red-400">{error}</p>;
 
   return (
     <div className="space-y-6">
       <OpsPageHeader
-        title="Product Economics"
-        subtitle="Gross revenue, partner commissions, and platform margin estimate (not net profit)"
+        title={t("dashboard.finance.productEconomicsTitle")}
+        subtitle={t("dashboard.finance.productEconomicsSubtitle")}
       />
-      <SectionCard title="All products">
+      <SectionCard title={t("dashboard.finance.allProducts")}>
         <OpsTable
           columns={[
-            { key: "name", label: "Product" },
-            { key: "type", label: "Type" },
-            { key: "level", label: "Level" },
-            { key: "price", label: "Price" },
-            { key: "sales", label: "Sales" },
-            { key: "revenue", label: "Gross revenue" },
-            { key: "commission", label: "Partner commission" },
-            { key: "apiCost", label: "Est. API cost" },
-            { key: "profit", label: "Platform margin est." },
-            { key: "conversion", label: "Conversion %" },
+            { key: "name", label: t("dashboard.finance.product") },
+            { key: "type", label: t("dashboard.finance.type") },
+            { key: "level", label: t("dashboard.finance.level") },
+            { key: "price", label: t("dashboard.finance.price") },
+            { key: "sales", label: t("dashboard.finance.salesCount") },
+            { key: "revenue", label: t("dashboard.finance.grossRevenue") },
+            { key: "commission", label: t("dashboard.finance.partnerCommission") },
+            { key: "apiCost", label: t("dashboard.finance.estApiCost") },
+            { key: "profit", label: t("dashboard.finance.platformMarginEst") },
+            { key: "conversion", label: t("dashboard.finance.conversionPct") },
           ]}
           rows={(data ?? []).map((r) => ({
             name: r.productName,
@@ -51,14 +56,22 @@ export default function ProductEconomicsPage() {
             level: r.level,
             price: r.priceLabel,
             sales: r.salesCount,
-            revenue: formatMoney(r.grossRevenue),
-            commission: formatMoney(r.partnerCommission),
-            apiCost: formatMoney(r.estimatedApiCost),
-            profit: formatMoney(r.grossProfitEstimate),
+            revenue: formatMoneyLocale(r.grossRevenue, "USD", locale),
+            commission: formatMoneyLocale(r.partnerCommission, "USD", locale),
+            apiCost: formatMoneyLocale(r.estimatedApiCost, "USD", locale),
+            profit: formatMoneyLocale(r.grossProfitEstimate, "USD", locale),
             conversion: `${r.conversionRatePlaceholder}%`,
           }))}
         />
       </SectionCard>
     </div>
+  );
+}
+
+export default function ProductEconomicsPage() {
+  return (
+    <FinanceAdminGuard>
+      <ProductEconomicsPageContent />
+    </FinanceAdminGuard>
   );
 }

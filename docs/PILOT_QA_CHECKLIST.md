@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/QA_CHECKLIST.md](./ru/QA_CHECKLIST.md)
+
+---
+
 # Pilot QA Checklist
 
 Use before inviting closed-pilot bloggers. Complements [PILOT_READINESS_CHECKLIST.md](./PILOT_READINESS_CHECKLIST.md) (Package 6 demo polish) with BE-05 operational coverage.

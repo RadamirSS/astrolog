@@ -1,5 +1,11 @@
-import type { TenantConfig } from "./types";
+import type { SurfaceType, TenantConfig } from "./types";
 import { REAL_PRODUCT_TYPES } from "./types";
+import {
+  ensureSurfaces,
+  getEnabledSurfaces,
+  getSurfaceByType,
+  REFERENCE_VISUAL_PACKS,
+} from "./surfaces";
 
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 const URL_PATTERN = /^https?:\/\/.+/;
@@ -20,6 +26,8 @@ export interface SetupProgress {
   miniAppSlugConfigured: boolean;
   visualPackSelected: boolean;
   previewChecked: boolean;
+  surfacesSelected: boolean;
+  telegramBotConnected: boolean;
 }
 
 export interface PublishValidationResult {
@@ -100,6 +108,18 @@ export function getSetupProgress(config: TenantConfig): SetupProgress {
   );
   const miniAppSlugConfigured = Boolean(config.miniApp?.publicSlug?.trim());
   const visualPackSelected = Boolean(config.miniApp?.visualPack);
+  const miniApp = config.miniApp
+    ? ensureSurfaces(config.miniApp, config.miniApp.publicSlug)
+    : undefined;
+  const enabledSurfaces = getEnabledSurfaces(miniApp);
+  const surfacesSelected = enabledSurfaces.length > 0;
+  const telegramSurface = getSurfaceByType(miniApp, "telegram_mini_app");
+  const telegramEnabled = Boolean(telegramSurface && telegramSurface.status !== "disabled");
+  const tgConfig = telegramSurface?.configJson as { botStatus?: string } | undefined;
+  const telegramBotConnected =
+    !telegramEnabled ||
+    tgConfig?.botStatus === "connected" ||
+    tgConfig?.botStatus === "webhook_configured";
 
   const previewChecked =
     brandAdded &&
@@ -109,7 +129,8 @@ export function getSetupProgress(config: TenantConfig): SetupProgress {
     hasFreeReportActive &&
     hasPaidProductActive &&
     miniAppSlugConfigured &&
-    visualPackSelected;
+    visualPackSelected &&
+    surfacesSelected;
 
   return {
     brandAdded,
@@ -121,6 +142,8 @@ export function getSetupProgress(config: TenantConfig): SetupProgress {
     miniAppSlugConfigured,
     visualPackSelected,
     previewChecked,
+    surfacesSelected,
+    telegramBotConnected,
   };
 }
 
@@ -151,6 +174,56 @@ export function validateMiniAppPublish(config: TenantConfig): PublishValidationR
 
   if (!config.miniApp?.visualPack) {
     errors.push({ path: "miniApp.visualPack", message: "Visual pack is required" });
+  } else if (
+    !REFERENCE_VISUAL_PACKS.includes(
+      config.miniApp.visualPack as (typeof REFERENCE_VISUAL_PACKS)[number]
+    )
+  ) {
+    errors.push({
+      path: "miniApp.visualPack",
+      message: "Select a reference visual pack before publishing",
+    });
+  }
+
+  const miniApp = config.miniApp
+    ? ensureSurfaces(config.miniApp, config.miniApp.publicSlug)
+    : undefined;
+  const enabledSurfaces = getEnabledSurfaces(miniApp);
+  if (enabledSurfaces.length === 0) {
+    errors.push({ path: "miniApp.surfaces", message: "Select at least one publication surface" });
+  }
+
+  const telegramSurface = getSurfaceByType(miniApp, "telegram_mini_app");
+  if (telegramSurface && telegramSurface.status !== "disabled") {
+    const tg = telegramSurface.configJson as { botStatus?: string };
+    if (tg.botStatus !== "connected" && tg.botStatus !== "webhook_configured") {
+      errors.push({
+        path: "miniApp.surfaces.telegram",
+        message: "Connect your Telegram bot before publishing the Telegram surface",
+      });
+    }
+  }
+
+  const websiteSurface = getSurfaceByType(miniApp, "website");
+  if (websiteSurface && websiteSurface.status !== "disabled") {
+    const web = websiteSurface.configJson as { slug?: string };
+    if (!web.slug?.trim() || !SLUG_PATTERN.test(web.slug)) {
+      errors.push({
+        path: "miniApp.surfaces.website",
+        message: "Website slug is required and must be lowercase alphanumeric with hyphens",
+      });
+    }
+  }
+
+  const mobileSurface = getSurfaceByType(miniApp, "mobile_web");
+  if (mobileSurface && mobileSurface.status !== "disabled") {
+    const mobile = mobileSurface.configJson as { publicUrl?: string };
+    if (!mobile.publicUrl?.trim()) {
+      errors.push({
+        path: "miniApp.surfaces.mobile",
+        message: "Mobile web public URL is required",
+      });
+    }
   }
 
   if (config.status === "paused" || config.miniApp?.publicStatus === "paused") {
@@ -166,6 +239,22 @@ export function validateMiniAppPublish(config: TenantConfig): PublishValidationR
     }
   }
 
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateSurfacePublish(
+  config: TenantConfig,
+  surfaceType: SurfaceType
+): PublishValidationResult {
+  const base = validateMiniAppPublish(config);
+  const errors = [...base.errors];
+  const miniApp = config.miniApp
+    ? ensureSurfaces(config.miniApp, config.miniApp.publicSlug)
+    : undefined;
+  const surface = getSurfaceByType(miniApp, surfaceType);
+  if (!surface || surface.status === "disabled") {
+    errors.push({ path: `miniApp.surfaces.${surfaceType}`, message: "Surface is not enabled" });
+  }
   return { valid: errors.length === 0, errors };
 }
 

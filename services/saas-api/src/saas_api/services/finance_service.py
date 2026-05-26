@@ -20,8 +20,9 @@ from saas_api.db.models.order import Order
 from saas_api.db.models.partner_balance import PartnerBalance
 from saas_api.db.models.payment import Payment, PaymentStatus
 from saas_api.db.models.payout import Payout, PayoutMethodType, PayoutStatus
-from saas_api.services import ops_seed_service
+from saas_api.services.audit_service import log_action
 from saas_api.services.commerce_store import _now, log_order_event, save_order
+from saas_api.services.partner_service import get_commission_rate
 from saas_api.services.finance_store import (
     balance_to_dict,
     commission_to_dict,
@@ -36,14 +37,10 @@ def _round_money(value: float) -> float:
     return round(value, 2)
 
 
-def _resolve_commission_rate(tenant_id: str, partner_id: str, product_type: str) -> float:
-    partner = ops_seed_service.get_partner(tenant_id, partner_id)
-    if not partner:
-        return 0.0
-    overrides = partner.get("productCommissionRates") or {}
-    if product_type in overrides:
-        return float(overrides[product_type])
-    return float(partner.get("commissionRate") or 0.0)
+def _resolve_commission_rate(
+    db: Session, tenant_id: str, partner_id: str, product_type: str
+) -> float:
+    return get_commission_rate(db, tenant_id, partner_id, product_type)
 
 
 def get_or_create_partner_balance(
@@ -152,12 +149,14 @@ def record_payment_confirmed(
     if existing and existing.status == PaymentStatus.PAID:
         return existing
 
+    was_new_paid = False
     if existing:
         payment = existing
         payment.status = status
         payment.updated_at = now
         if status == PaymentStatus.PAID:
             payment.confirmed_at = payment.confirmed_at or now
+        was_new_paid = status == PaymentStatus.PAID
     else:
         payment = Payment(
             id=new_id("pay"),
@@ -179,6 +178,7 @@ def record_payment_confirmed(
         )
         db.add(payment)
         db.flush()
+        was_new_paid = status == PaymentStatus.PAID
 
     if pay_amount != order.amount or pay_currency != order.currency:
         order.needs_review = True
@@ -186,6 +186,14 @@ def record_payment_confirmed(
 
     if status == PaymentStatus.PAID:
         payment.confirmed_at = payment.confirmed_at or now
+        if not existing or was_new_paid:
+            log_action(
+                db,
+                action="payment.confirmed",
+                actor_account_id=actor_account_id,
+                tenant_id=order.tenant_id,
+                payload={"orderId": order.id, "paymentId": payment.id, "amount": pay_amount},
+            )
         post_ledger_entry(
             db,
             tenant_id=order.tenant_id,
@@ -244,7 +252,7 @@ def create_commission_for_paid_order(
     if existing:
         return existing
 
-    rate = _resolve_commission_rate(order.tenant_id, order.partner_id, order.product_type)
+    rate = _resolve_commission_rate(db, order.tenant_id, order.partner_id, order.product_type)
     commission_amount = _round_money(order.amount * rate)
     now = _now()
     hold_until = now + timedelta(days=settings.commission_hold_days)
@@ -297,6 +305,13 @@ def create_commission_for_paid_order(
         event_type="commission_created",
         payload={"orderId": order.id, "amount": commission_amount},
         actor_account_id=actor_account_id,
+    )
+    log_action(
+        db,
+        action="commission.created",
+        actor_account_id=actor_account_id,
+        tenant_id=order.tenant_id,
+        payload={"commissionId": commission.id, "orderId": order.id, "amount": commission_amount},
     )
     return commission
 
@@ -354,7 +369,7 @@ def release_commission_to_available(
         created_by=admin_account_id,
     )
     db.flush()
-    return commission_to_dict(commission)
+    return commission_to_dict(db, commission)
 
 
 def hold_commission(
@@ -412,7 +427,7 @@ def hold_commission(
         created_by=admin_account_id,
     )
     db.flush()
-    return commission_to_dict(commission)
+    return commission_to_dict(db, commission)
 
 
 def cancel_commission_for_refund(
@@ -528,7 +543,7 @@ def create_manual_adjustment(
         created_by=admin_account_id,
     )
     db.flush()
-    return balance_to_dict(balance)
+    return balance_to_dict(db, balance)
 
 
 def create_payout_draft(
@@ -586,7 +601,7 @@ def create_payout_draft(
         created_by=admin_account_id,
     )
     db.flush()
-    return payout_to_dict(payout)
+    return payout_to_dict(db, payout)
 
 
 def approve_payout(
@@ -642,7 +657,7 @@ def approve_payout(
         created_by=admin_account_id,
     )
     db.flush()
-    return payout_to_dict(payout)
+    return payout_to_dict(db, payout)
 
 
 def mark_payout_paid(
@@ -696,7 +711,7 @@ def mark_payout_paid(
         created_by=admin_account_id,
     )
     db.flush()
-    return payout_to_dict(payout)
+    return payout_to_dict(db, payout)
 
 
 def mark_payout_failed(
@@ -743,7 +758,7 @@ def mark_payout_failed(
         created_by=admin_account_id,
     )
     db.flush()
-    return payout_to_dict(payout)
+    return payout_to_dict(db, payout)
 
 
 def cancel_payout(
@@ -788,7 +803,7 @@ def cancel_payout(
         created_by=admin_account_id,
     )
     db.flush()
-    return payout_to_dict(payout)
+    return payout_to_dict(db, payout)
 
 
 def mark_payment_refunded(
@@ -934,7 +949,7 @@ def recalculate_partner_balance(
     balance.refunded_total = _round_money(cancelled)
     balance.updated_at = _now()
     db.flush()
-    return balance_to_dict(balance)
+    return balance_to_dict(db, balance)
 
 
 def handle_paid_order_finance(

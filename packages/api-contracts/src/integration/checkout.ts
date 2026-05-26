@@ -1,26 +1,28 @@
 import { z } from "zod";
 import { attributionSchema, funnelTopicSchema, orderStatusSchema, realProductTypeSchema, entitlementStatusSchema, reportStatusOpsSchema } from "../ops";
 
-export const startCheckoutRequestSchema = z.object({
-  tenantId: z.string(),
-  tenantSlug: z.string(),
-  userId: z.string().optional(),
-  sessionId: z.string().optional(),
-  productId: z.string(),
-  productType: realProductTypeSchema,
-  theme: funnelTopicSchema.optional(),
-  locale: z.string().optional(),
-  birth: z
-    .object({
-      name: z.string(),
-      birthDate: z.string(),
-      birthTime: z.string().nullable().optional(),
-      timeAccuracy: z.enum(["exact", "approximate", "unknown"]),
-      birthPlace: z.string(),
-    })
-    .optional(),
-  partner: attributionSchema.optional(),
-});
+export const startCheckoutRequestSchema = z
+  .object({
+    tenantId: z.string(),
+    tenantSlug: z.string(),
+    userId: z.string().optional(),
+    sessionId: z.string().optional(),
+    productId: z.string(),
+    productType: realProductTypeSchema,
+    theme: funnelTopicSchema.optional(),
+    locale: z.string().optional(),
+    birth: z
+      .object({
+        name: z.string(),
+        birthDate: z.string(),
+        birthTime: z.string().nullable().optional(),
+        timeAccuracy: z.enum(["exact", "approximate", "unknown"]),
+        birthPlace: z.string(),
+      })
+      .optional(),
+    partner: attributionSchema.optional(),
+  })
+  .strict();
 
 export const startCheckoutResponseSchema = z.object({
   orderId: z.string(),

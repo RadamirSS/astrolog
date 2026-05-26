@@ -223,4 +223,48 @@ export interface ApiAdapter {
     requestId: string,
     update: UpdatePremiumRequestAdminInput
   ): Promise<PremiumRequest | null>;
+  getCreatorMiniApp(tenantId: string): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  updateCreatorMiniApp(
+    tenantId: string,
+    patch: Partial<import("@astro/api-contracts").CreatorMiniAppResponse>
+  ): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  publishCreatorMiniApp(tenantId: string): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  unpublishCreatorMiniApp(tenantId: string): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  updateSurfaceConfig(
+    tenantId: string,
+    surfaceId: string,
+    patch: Partial<import("@astro/tenant-config").SurfaceConfig>
+  ): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  setSurfaceEnabled(
+    tenantId: string,
+    type: import("@astro/tenant-config").SurfaceType,
+    enabled: boolean
+  ): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  publishSurface(
+    tenantId: string,
+    surfaceId: string
+  ): Promise<import("@astro/api-contracts").CreatorMiniAppResponse>;
+  getSurfacePreview(
+    tenantId: string,
+    surfaceId: string
+  ): Promise<{ previewUrl: string; config: import("@astro/api-contracts").CreatorMiniAppResponse }>;
+  connectTelegramBot(
+    tenantId: string,
+    token: string
+  ): Promise<import("@astro/api-contracts").TelegramIntegrationStatusResponse>;
+  disconnectTelegramBot(
+    tenantId: string,
+    integrationId?: string
+  ): Promise<import("@astro/api-contracts").TelegramIntegrationStatusResponse>;
+  validateTelegramBotToken(
+    tenantId: string,
+    token: string
+  ): Promise<import("@astro/api-contracts").ValidateTelegramBotResponse>;
+  getTelegramIntegrationStatus(
+    tenantId: string
+  ): Promise<import("@astro/api-contracts").TelegramIntegrationStatusResponse | null>;
+  resolvePublicSurface(
+    type: "telegram" | "website" | "mobile",
+    slug: string
+  ): Promise<import("@astro/api-contracts").PublicSurfaceResponse>;
 }

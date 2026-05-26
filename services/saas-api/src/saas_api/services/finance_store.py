@@ -13,7 +13,7 @@ from saas_api.db.models.partner_balance import PartnerBalance
 from saas_api.db.models.payment import Payment
 from saas_api.db.models.payout import Payout
 from saas_api.db.models.payout_method import PayoutMethodRecord
-from saas_api.services import ops_seed_service
+from saas_api.services.partner_service import get_partner_name
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -22,9 +22,8 @@ def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def partner_name(tenant_id: str, partner_id: str) -> str | None:
-    partner = ops_seed_service.get_partner(tenant_id, partner_id)
-    return partner["name"] if partner else None
+def partner_name(db: Session, tenant_id: str, partner_id: str) -> str | None:
+    return get_partner_name(db, tenant_id, partner_id)
 
 
 def payment_to_dict(payment: Payment, *, include_raw: bool = False) -> dict[str, Any]:
@@ -54,12 +53,12 @@ def payment_to_dict(payment: Payment, *, include_raw: bool = False) -> dict[str,
     return data
 
 
-def commission_to_dict(commission: Commission) -> dict[str, Any]:
+def commission_to_dict(db: Session, commission: Commission) -> dict[str, Any]:
     return {
         "id": commission.id,
         "tenantId": commission.tenant_id,
         "partnerId": commission.partner_id,
-        "partnerName": partner_name(commission.tenant_id, commission.partner_id),
+        "partnerName": partner_name(db, commission.tenant_id, commission.partner_id),
         "orderId": commission.order_id,
         "paymentId": commission.payment_id,
         "productType": commission.product_type,
@@ -78,12 +77,12 @@ def commission_to_dict(commission: Commission) -> dict[str, Any]:
     }
 
 
-def balance_to_dict(balance: PartnerBalance) -> dict[str, Any]:
+def balance_to_dict(db: Session, balance: PartnerBalance) -> dict[str, Any]:
     return {
         "id": balance.id,
         "tenantId": balance.tenant_id,
         "partnerId": balance.partner_id,
-        "partnerName": partner_name(balance.tenant_id, balance.partner_id),
+        "partnerName": partner_name(db, balance.tenant_id, balance.partner_id),
         "currency": balance.currency,
         "pendingBalance": balance.pending_balance,
         "availableBalance": balance.available_balance,
@@ -96,12 +95,12 @@ def balance_to_dict(balance: PartnerBalance) -> dict[str, Any]:
     }
 
 
-def ledger_to_dict(entry: LedgerEntry) -> dict[str, Any]:
+def ledger_to_dict(db: Session, entry: LedgerEntry) -> dict[str, Any]:
     return {
         "id": entry.id,
         "tenantId": entry.tenant_id,
         "partnerId": entry.partner_id,
-        "partnerName": partner_name(entry.tenant_id, entry.partner_id)
+        "partnerName": partner_name(db, entry.tenant_id, entry.partner_id)
         if entry.partner_id
         else None,
         "orderId": entry.order_id,
@@ -120,12 +119,12 @@ def ledger_to_dict(entry: LedgerEntry) -> dict[str, Any]:
     }
 
 
-def payout_to_dict(payout: Payout) -> dict[str, Any]:
+def payout_to_dict(db: Session, payout: Payout) -> dict[str, Any]:
     return {
         "id": payout.id,
         "tenantId": payout.tenant_id,
         "partnerId": payout.partner_id,
-        "partnerName": partner_name(payout.tenant_id, payout.partner_id),
+        "partnerName": partner_name(db, payout.tenant_id, payout.partner_id),
         "currency": payout.currency,
         "amount": payout.amount,
         "status": payout.status,
@@ -210,7 +209,7 @@ def list_commissions_db(
     if partner_id:
         query = query.filter(Commission.partner_id == partner_id)
     rows = query.order_by(Commission.created_at.desc()).limit(limit).all()
-    return [commission_to_dict(c) for c in rows]
+    return [commission_to_dict(db, c) for c in rows]
 
 
 def commission_summary_from_db(db: Session, tenant_id: str, partner_id: str | None = None) -> dict[str, float]:
@@ -240,7 +239,7 @@ def list_balances_db(
     query = db.query(PartnerBalance).filter(PartnerBalance.tenant_id == tenant_id)
     if partner_id:
         query = query.filter(PartnerBalance.partner_id == partner_id)
-    return [balance_to_dict(b) for b in query.all()]
+    return [balance_to_dict(db, b) for b in query.all()]
 
 
 def list_ledger_db(
@@ -269,7 +268,7 @@ def list_ledger_db(
     if payout_id:
         query = query.filter(LedgerEntry.payout_id == payout_id)
     rows = query.order_by(LedgerEntry.created_at.desc()).limit(limit).all()
-    return [ledger_to_dict(e) for e in rows]
+    return [ledger_to_dict(db, e) for e in rows]
 
 
 def list_payouts_db(
@@ -279,4 +278,14 @@ def list_payouts_db(
     if partner_id:
         query = query.filter(Payout.partner_id == partner_id)
     rows = query.order_by(Payout.created_at.desc()).all()
-    return [payout_to_dict(p) for p in rows]
+    return [payout_to_dict(db, p) for p in rows]
+
+
+def list_payout_methods_db(
+    db: Session, tenant_id: str, *, partner_id: str | None = None
+) -> list[dict[str, Any]]:
+    query = db.query(PayoutMethodRecord).filter(PayoutMethodRecord.tenant_id == tenant_id)
+    if partner_id:
+        query = query.filter(PayoutMethodRecord.partner_id == partner_id)
+    rows = query.order_by(PayoutMethodRecord.created_at.desc()).all()
+    return [payout_method_to_dict(r) for r in rows]

@@ -17,6 +17,7 @@ export * from "./EmptyState";
 export * from "./AppShell";
 export * from "./MockModeBanner";
 export * from "./ProgressSteps";
+export * from "./SegmentedControl";
 export * from "./FaqAccordion";
 export * from "./ProductCard";
 export * from "./ConfirmDialog";

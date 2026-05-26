@@ -53,6 +53,19 @@ import {
   mockListPromoMaterials,
   mockGetProductEconomics,
   mockGetFunnelAnalytics,
+  mockGetCreatorMiniApp,
+  mockUpdateCreatorMiniApp,
+  mockPublishCreatorMiniApp,
+  mockUnpublishCreatorMiniApp,
+  mockUpdateSurfaceConfig,
+  mockSetSurfaceEnabled,
+  mockPublishSurface,
+  mockGetSurfacePreview,
+  mockConnectTelegramBot,
+  mockDisconnectTelegramBot,
+  mockValidateTelegramBot,
+  mockGetTelegramIntegrationStatus,
+  mockResolvePublicSurface,
 } from "@astro/mock-api";
 import type { ApiAdapter } from "./types";
 import { isReportV2 } from "@astro/tenant-config";
@@ -281,4 +294,20 @@ export const mockAdapter: ApiAdapter = {
     wrap(() => listPremiumRequestsForTenant(tenantId, filters)),
   updatePremiumRequestAdmin: (tenantId, requestId, update) =>
     wrap(() => updatePremiumRequestAdmin(tenantId, requestId, update)),
+  getCreatorMiniApp: (tenantId) => wrap(() => mockGetCreatorMiniApp(tenantId)),
+  updateCreatorMiniApp: (tenantId, patch) => wrap(() => mockUpdateCreatorMiniApp(tenantId, patch)),
+  publishCreatorMiniApp: (tenantId) => wrap(() => mockPublishCreatorMiniApp(tenantId)),
+  unpublishCreatorMiniApp: (tenantId) => wrap(() => mockUnpublishCreatorMiniApp(tenantId)),
+  updateSurfaceConfig: (tenantId, surfaceId, patch) =>
+    wrap(() => mockUpdateSurfaceConfig(tenantId, surfaceId, patch)),
+  setSurfaceEnabled: (tenantId, type, enabled) =>
+    wrap(() => mockSetSurfaceEnabled(tenantId, type, enabled)),
+  publishSurface: (tenantId, surfaceId) => wrap(() => mockPublishSurface(tenantId, surfaceId)),
+  getSurfacePreview: (tenantId, surfaceId) => wrap(() => mockGetSurfacePreview(tenantId, surfaceId)),
+  connectTelegramBot: (tenantId, token) => wrap(() => mockConnectTelegramBot(tenantId, token)),
+  disconnectTelegramBot: (tenantId, integrationId) =>
+    wrap(() => mockDisconnectTelegramBot(tenantId, integrationId)),
+  validateTelegramBotToken: (tenantId, token) => wrap(() => mockValidateTelegramBot(tenantId, token)),
+  getTelegramIntegrationStatus: (tenantId) => wrap(() => mockGetTelegramIntegrationStatus(tenantId)),
+  resolvePublicSurface: (type, slug) => wrap(() => mockResolvePublicSurface(type, slug)),
 };

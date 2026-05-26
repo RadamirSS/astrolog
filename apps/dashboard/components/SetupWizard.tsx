@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { TenantConfig } from "@astro/tenant-config";
-import { getFieldError, getTenantConfigFieldErrors } from "@astro/tenant-config";
+import type { RealProductType, TenantConfig } from "@astro/tenant-config";
+import {
+  REAL_PRODUCT_CATALOG,
+  REAL_PRODUCT_TYPES,
+  getFieldError,
+  getTenantConfigFieldErrors,
+  syncCatalogProducts,
+} from "@astro/tenant-config";
 import { trackSafeSync, getApiMode, uploadTenantMedia } from "@astro/api-client";
 import { THEME_PRESET_OPTIONS } from "@astro/theme-engine";
 import { useT } from "@astro/i18n";
@@ -17,9 +23,9 @@ import {
   SectionCard,
   Textarea,
   ThemePresetCard,
+  Toggle,
 } from "@astro/ui";
 import { CompactPreview } from "./CompactPreview";
-import { createEmptyProduct } from "./ProductEditor";
 import { SETUP_STEP_COUNT } from "../lib/setup-steps";
 import { getThemePresetLabel } from "../lib/theme-preset-label";
 
@@ -111,8 +117,26 @@ export function SetupWizard({ config, tenantId, onUpdate, onComplete }: SetupWiz
   }
 
   const overrides = config.theme.overrides ?? {};
-  const products = [...config.products].sort((a, b) => a.sortOrder - b.sortOrder);
-  const firstProduct = products[0];
+  const enabledTypes = new Set(
+    config.products.filter((p) => p.status === "active").map((p) => p.productType)
+  );
+
+  function toggleCatalogProduct(productType: RealProductType, active: boolean) {
+    const nextTypes = new Set(enabledTypes);
+    if (active) {
+      nextTypes.add(productType);
+    } else {
+      nextTypes.delete(productType);
+    }
+    if (!nextTypes.has("free_report")) {
+      nextTypes.add("free_report");
+    }
+    const ordered = REAL_PRODUCT_TYPES.filter((type) => nextTypes.has(type));
+    onUpdate((prev) => ({
+      ...prev,
+      products: syncCatalogProducts(prev.slug, "ru", ordered),
+    }));
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -302,58 +326,42 @@ export function SetupWizard({ config, tenantId, onUpdate, onComplete }: SetupWiz
 
       {step === 4 && (
         <SectionCard title={t("dashboard.setup.services")}>
-          {!firstProduct ? (
-            <Button
-              type="button"
-              onClick={() =>
-                onUpdate((prev) => ({
-                  ...prev,
-                  products: [...prev.products, createEmptyProduct(prev, t)],
-                }))
-              }
-            >
-              {t("dashboard.setup.addFirstService")}
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <Input
-                label={t("dashboard.setup.serviceTitle")}
-                value={firstProduct.title}
-                onChange={(e) =>
-                  onUpdate((prev) => ({
-                    ...prev,
-                    products: prev.products.map((p) =>
-                      p.id === firstProduct.id ? { ...p, title: e.target.value } : p
-                    ),
-                  }))
-                }
-              />
-              <Textarea
-                label={t("dashboard.setup.description")}
-                value={firstProduct.description ?? ""}
-                onChange={(e) =>
-                  onUpdate((prev) => ({
-                    ...prev,
-                    products: prev.products.map((p) =>
-                      p.id === firstProduct.id ? { ...p, description: e.target.value } : p
-                    ),
-                  }))
-                }
-              />
-              <Input
-                label={t("dashboard.setup.priceLabel")}
-                value={firstProduct.priceLabel ?? ""}
-                onChange={(e) =>
-                  onUpdate((prev) => ({
-                    ...prev,
-                    products: prev.products.map((p) =>
-                      p.id === firstProduct.id ? { ...p, priceLabel: e.target.value } : p
-                    ),
-                  }))
-                }
-              />
-            </div>
-          )}
+          <p className="mb-4 text-sm text-slate-400">
+            {t("dashboard.products.catalogSubtitle", {
+              defaultValue:
+                "Enable products from the platform catalog. Prices are read-only and set by the platform.",
+            })}
+          </p>
+          <div className="space-y-4">
+            {REAL_PRODUCT_CATALOG.map((def) => {
+              const active = enabledTypes.has(def.productType);
+              const isFree = def.productType === "free_report";
+              return (
+                <div
+                  key={def.productType}
+                  className="flex flex-col gap-2 rounded-lg border border-slate-700 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium">{def.titleRu}</p>
+                    <p className="text-sm text-slate-400">{def.subtitleRu}</p>
+                    <p className="mt-1 text-sm text-violet-300">{def.priceLabelRu}</p>
+                  </div>
+                  <Toggle
+                    label={
+                      isFree
+                        ? t("dashboard.products.freeRequired", { defaultValue: "Required" })
+                        : active
+                          ? t("dashboard.products.enabled", { defaultValue: "Enabled" })
+                          : t("dashboard.products.disabled", { defaultValue: "Disabled" })
+                    }
+                    checked={active}
+                    disabled={isFree}
+                    onChange={(checked) => toggleCatalogProduct(def.productType, checked)}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </SectionCard>
       )}
 

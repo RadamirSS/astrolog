@@ -2,6 +2,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 
 from backend_common.errors import ApiErrorCode, AppError
+from saas_api.auth.dependencies import is_platform_admin
 from saas_api.auth.passwords import new_id
 from saas_api.db.models.account import Account
 from saas_api.db.models.tenant import Tenant, TenantStatus
@@ -9,6 +10,8 @@ from saas_api.db.models.tenant_config import ConfigKind, TenantConfig
 from saas_api.services.audit_service import log_action
 from saas_api.services.config_diff import build_config_status
 from saas_api.services.config_validation import validate_tenant_config
+from saas_api.services.partner_service import ensure_partner_from_config
+from saas_api.services.catalog_guard import normalize_creator_product_prices
 from saas_api.services.seed_builder import publish_config_copy
 
 
@@ -68,6 +71,8 @@ def find_published_by_public_slug(db, slug: str) -> tuple[Tenant, dict] | None:
 
 def save_draft_config(db, tenant_id: str, config: dict, actor: Account) -> dict:
     _get_tenant_or_404(db, tenant_id)
+    if not is_platform_admin(actor):
+        config = normalize_creator_product_prices(deepcopy(config))
     validated = validate_tenant_config(config, expected_tenant_id=tenant_id)
     now = _utc_now_iso()
     validated = deepcopy(validated)
@@ -153,6 +158,10 @@ def publish_config(db, tenant_id: str, actor: Account) -> dict:
     if tenant.status == TenantStatus.DRAFT:
         tenant.status = TenantStatus.ACTIVE
     tenant.updated_at = now_dt
+
+    mini_app = published_config.get("miniApp") or {}
+    brand = published_config.get("brand") or {}
+    ensure_partner_from_config(db, tenant_id, mini_app, brand=brand)
 
     log_action(db, action="config_published", actor_account_id=actor.id, tenant_id=tenant_id)
     db.commit()

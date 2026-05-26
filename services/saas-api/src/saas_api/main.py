@@ -19,10 +19,13 @@ from saas_api.api.routes_auth import router as auth_router
 from saas_api.api.routes_checkout import entitlements_router, router as checkout_router
 from saas_api.api.routes_premium_requests import dashboard_router as premium_dashboard_router
 from saas_api.api.routes_premium_requests import router as premium_requests_router
+from saas_api.api.routes_creator import router as creator_router
 from saas_api.api.routes_dashboard import router as dashboard_router
+from saas_api.api.routes_public_surfaces import router as public_surfaces_router
 from saas_api.api.routes_dashboard_ops import router as dashboard_ops_router
 from saas_api.api.routes_health import router as health_router
 from saas_api.api.routes_me import router as me_router
+from saas_api.api.routes_public_partners import miniapps_router as public_miniapps_router
 from saas_api.api.routes_public_partners import router as public_partners_router
 from saas_api.api.routes_public_tenant import router as public_tenant_router
 from saas_api.api.routes_reports import router as reports_router
@@ -90,11 +93,14 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(dashboard_router)
+    app.include_router(creator_router)
     app.include_router(dashboard_ops_router)
     app.include_router(analytics_router)
     app.include_router(admin_router)
     app.include_router(public_tenant_router)
     app.include_router(public_partners_router)
+    app.include_router(public_miniapps_router)
+    app.include_router(public_surfaces_router)
     app.include_router(telegram_router)
     app.include_router(me_router)
     app.include_router(reports_router)

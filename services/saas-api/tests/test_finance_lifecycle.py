@@ -346,3 +346,80 @@ def test_verify_partner_balance_ok(end_user_client: TestClient, seeded_db: Sessi
     _start_paid_checkout(end_user_client, seeded_db)
     result = verify_partner_balance(seeded_db, "tenant_mystic", "partner_luna", "USD")
     assert result["status"] == "ok"
+
+
+def test_verify_partner_balance_mismatch(seeded_db: Session):
+    from saas_api.services.finance_service import verify_partner_balance
+    from saas_api.services.seed_finance import seed_finance_demo
+
+    seed_finance_demo(seeded_db, "tenant_mystic")
+    balance = (
+        seeded_db.query(PartnerBalance)
+        .filter(
+            PartnerBalance.tenant_id == "tenant_mystic",
+            PartnerBalance.partner_id == "partner_nicole",
+        )
+        .first()
+    )
+    assert balance is not None
+    balance.available_balance = 9999.0
+    seeded_db.commit()
+
+    result = verify_partner_balance(seeded_db, "tenant_mystic", "partner_nicole", "USD")
+    assert result["status"] == "mismatch"
+
+
+def test_verify_balance_http_endpoint(client: TestClient, seeded_db: Session):
+    from saas_api.services.seed_finance import seed_finance_demo
+
+    seed_finance_demo(seeded_db, "tenant_mystic")
+    response = client.post("/auth/login", json={"email": "admin@example.com", "password": "admin123!"})
+    assert response.status_code == 200
+    verify = client.get(
+        "/api/dashboard/tenants/tenant_mystic/ops/balances/partner_nicole/verify?currency=USD"
+    )
+    assert verify.status_code == 200
+    assert verify.json()["data"]["status"] in {"ok", "mismatch"}
+
+
+def test_debit_adjustment_cannot_make_balance_negative(seeded_db: Session):
+    from backend_common.errors import AppError
+    from saas_api.services.finance_service import create_manual_adjustment
+
+    with pytest.raises(AppError, match="Insufficient available balance"):
+        create_manual_adjustment(
+            seeded_db,
+            "tenant_mystic",
+            "partner_nicole",
+            -1000.0,
+            "USD",
+            "Test overdraft",
+            admin_account_id="account_admin",
+        )
+
+
+def test_commission_unknown_partner_uses_platform_default(end_user_client: TestClient, seeded_db: Session):
+    response = end_user_client.post(
+        "/api/checkout/start",
+        json={
+            "tenantId": "tenant_mystic",
+            "tenantSlug": "mystic-dark",
+            "productId": "mystic-dark-money-code",
+            "productType": "low_ticket_money",
+            "theme": "money",
+            "partner": {"partnerId": "partner_unknown_xyz", "partnerSlug": "unknown"},
+        },
+    )
+    assert response.status_code == 200
+    checkout = response.json()["data"]
+    payment_client.payment_client.mock_mark_paid(checkout["paymentId"])
+    end_user_client.post(
+        f"/api/checkout/{checkout['orderId']}/confirm-return",
+        json={"orderId": checkout["orderId"], "returnState": "success"},
+    )
+    seeded_db.expire_all()
+    commission = (
+        seeded_db.query(Commission).filter(Commission.order_id == checkout["orderId"]).first()
+    )
+    assert commission is not None
+    assert commission.commission_rate == 0.5

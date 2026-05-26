@@ -168,3 +168,60 @@ def test_creator_scoped_partner_query_mismatch_denied(client: TestClient, seeded
     _login(client, "blogger@example.com", "blogger123!")
     response = client.get(_ops_url("/commissions?partnerId=partner_luna"))
     assert response.status_code == 403
+
+
+def test_creator_sees_only_own_commissions(client: TestClient, seeded_db: Session):
+    _seed_finance(seeded_db)
+    _login(client, "blogger@example.com", "blogger123!")
+    response = client.get(_ops_url("/commissions"))
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data
+    assert all(row["partnerId"] == "partner_nicole" for row in data)
+
+
+def test_creator_sees_only_own_payments(client: TestClient, seeded_db: Session):
+    _seed_finance(seeded_db)
+    _login(client, "blogger@example.com", "blogger123!")
+    response = client.get(_ops_url("/payments"))
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data
+    from saas_api.db.models.order import Order
+
+    order_ids = {row["orderId"] for row in data}
+    orders = seeded_db.query(Order).filter(Order.id.in_(order_ids)).all()
+    assert all(o.partner_id == "partner_nicole" for o in orders)
+
+
+def test_creator_cannot_get_another_partner_payment(client: TestClient, seeded_db: Session):
+    _seed_finance(seeded_db)
+    from saas_api.db.models.payment import Payment
+    from saas_api.db.models.order import Order
+
+    payment = (
+        seeded_db.query(Payment)
+        .join(Order, Order.id == Payment.order_id)
+        .filter(Order.partner_id == "partner_luna")
+        .first()
+    )
+    assert payment is not None
+    _login(client, "blogger@example.com", "blogger123!")
+    response = client.get(_ops_url(f"/payments/{payment.id}"))
+    assert response.status_code == 403
+
+
+def test_creator_cannot_access_revenue(client: TestClient, seeded_db: Session):
+    _seed_finance(seeded_db)
+    _login(client, "blogger@example.com", "blogger123!")
+    response = client.get(_ops_url("/revenue"))
+    assert response.status_code == 403
+
+
+def test_creator_sees_only_own_payouts(client: TestClient, seeded_db: Session):
+    _seed_finance(seeded_db)
+    _login(client, "blogger@example.com", "blogger123!")
+    response = client.get(_ops_url("/payouts"))
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert all(row["partnerId"] == "partner_nicole" for row in data)

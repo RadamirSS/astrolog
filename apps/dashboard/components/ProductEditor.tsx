@@ -1,3 +1,5 @@
+/** Legacy platform-admin-only product editor — do not mount for creator roles in pilot.
+ *  Creator builder uses REAL_PRODUCT_CATALOG toggles only; prices are platform-managed. */
 "use client";
 
 import { useMemo } from "react";
@@ -26,7 +28,6 @@ const PRODUCT_TYPES: ProductType[] = [
   "report",
   "course",
   "natal",
-  "compatibility",
   "forecast",
   "custom",
 ];

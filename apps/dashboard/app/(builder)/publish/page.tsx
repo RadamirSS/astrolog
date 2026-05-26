@@ -1,14 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { publishConfig } from "@astro/api-client";
 import { validateMiniAppPublish } from "@astro/tenant-config";
-import { Badge, ChecklistItem, ConfirmDialog, SectionCard } from "@astro/ui";
+import { Badge, Button, ChecklistItem, ConfirmDialog, SectionCard } from "@astro/ui";
 import { useT } from "@astro/i18n";
+import { formatAllLinksText } from "../../../lib/creator-self-service";
 import {
   getPublishChecklistItems,
   getSetupProgressForConfig,
 } from "../../../lib/publish-checklist";
+import { getPublishReadiness } from "../../../lib/publish-readiness";
+import { translateValidationErrors } from "../../../lib/validation-messages";
 import { useDashboard } from "../../components/DashboardProvider";
 import { useDashboardAnalytics } from "../../../lib/useDashboardAnalytics";
 
@@ -40,6 +44,7 @@ export default function PublishPage() {
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
 
   const areaLabels = useMemo(
     () => ({
@@ -54,15 +59,28 @@ export default function PublishPage() {
 
   if (loading || !config) return <p className="text-slate-400">{t("dashboard.publish.loading")}</p>;
 
+  const q = `?tenantId=${tenantId}`;
   const miniappUrl = process.env.NEXT_PUBLIC_MINIAPP_URL ?? "http://localhost:3000";
   const setup = getSetupProgressForConfig(config);
   const checklist = getPublishChecklistItems(config, setup, configStatus, isDirty, t);
   const requiredIncomplete = checklist.filter((item) => item.required && !item.done);
+  const readiness = getPublishReadiness(config, { isDirty });
+  const blockerMessages = translateValidationErrors(readiness.blockers, t);
+  const isPublishedNow =
+    publishedVersion != null || config.miniApp?.publicStatus === "published" || Boolean(publishedAt);
+
+  const publishDisabled =
+    publishing || saving || !readiness.canPublish || requiredIncomplete.length > 0;
+  const publishBlockReason =
+    requiredIncomplete.length > 0
+      ? t("dashboard.publish.completeRequired")
+      : blockerMessages[0] ??
+        (isDirty ? t("dashboard.publish.readinessAttentionDesc") : undefined);
 
   async function handlePublish() {
     const validation = validateMiniAppPublish(config!);
     if (!validation.valid) {
-      setError(validation.errors.map((e) => e.message).join(". "));
+      setError(translateValidationErrors(validation.errors, t).join(". "));
       return;
     }
     if (isDirty) {
@@ -101,6 +119,15 @@ export default function PublishPage() {
     }
   }
 
+  async function copyAllLinks() {
+    const text = formatAllLinksText(readiness.links, (key) => t(key));
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 1500);
+    }
+  }
+
   const confirmCopy = {
     publish: {
       title: t("dashboard.publish.confirmPublishTitle"),
@@ -123,6 +150,8 @@ export default function PublishPage() {
   };
 
   const activeConfirm = confirmAction ? confirmCopy[confirmAction] : null;
+  const readinessVariant =
+    readiness.tier === "ready" ? "success" : readiness.tier === "attention" ? "warning" : "error";
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -131,14 +160,126 @@ export default function PublishPage() {
         <p className="text-slate-400">{t("dashboard.publish.subtitle")}</p>
       </div>
 
-      {publishedVersion && publishedAt && (
-        <div className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-300">
-          {t("dashboard.publish.success", {
-            version: publishedVersion,
-            datetime: new Date(publishedAt).toLocaleString(),
-          })}
-        </div>
+      <div
+        className={`rounded-xl border px-4 py-3 ${
+          readinessVariant === "success"
+            ? "border-emerald-800 bg-emerald-950/40"
+            : readinessVariant === "warning"
+              ? "border-amber-800 bg-amber-950/30"
+              : "border-red-800 bg-red-950/30"
+        }`}
+      >
+        <p className="text-sm font-medium text-white">{t(readiness.headlineKey)}</p>
+        <p className="mt-1 text-sm text-slate-300">{t(readiness.descriptionKey)}</p>
+      </div>
+
+      {(publishedVersion && publishedAt) || isPublishedNow ? (
+        <SectionCard title={t("dashboard.publish.publishedSuccessTitle")}>
+          <p className="text-sm text-emerald-300">
+            {publishedVersion && publishedAt
+              ? t("dashboard.publish.success", {
+                  version: publishedVersion,
+                  datetime: new Date(publishedAt).toLocaleString(),
+                })
+              : t("dashboard.controlCenter.statusPublished")}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button type="button" onClick={() => void copyAllLinks()}>
+              {copiedAll ? t("dashboard.controlCenter.copied") : t("dashboard.controlCenter.copyAllLinks")}
+            </Button>
+            {readiness.links.find((l) => l.id === "website") && (
+              <a
+                href={readiness.links.find((l) => l.id === "website")!.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-lg border border-slate-700 px-4 py-2 text-sm text-violet-300 hover:bg-slate-800"
+              >
+                {t("dashboard.publish.openWebsite")}
+              </a>
+            )}
+            {readiness.links.find((l) => l.id === "mobile") && (
+              <a
+                href={readiness.links.find((l) => l.id === "mobile")!.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-lg border border-slate-700 px-4 py-2 text-sm text-violet-300 hover:bg-slate-800"
+              >
+                {t("dashboard.publish.openMobile")}
+              </a>
+            )}
+            {readiness.links.find((l) => l.id === "telegram") && (
+              <a
+                href={readiness.links.find((l) => l.id === "telegram")!.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-lg border border-slate-700 px-4 py-2 text-sm text-violet-300 hover:bg-slate-800"
+              >
+                {t("dashboard.publish.openTelegram")}
+              </a>
+            )}
+          </div>
+        </SectionCard>
+      ) : null}
+
+      {blockerMessages.length > 0 && (
+        <SectionCard title={t("dashboard.publish.blockingIssues")}>
+          <ul className="list-disc space-y-2 pl-5 text-sm text-amber-200">
+            {blockerMessages.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </SectionCard>
       )}
+
+      <SectionCard title={t("dashboard.publish.surfacesTitle")}>
+        <ul className="space-y-3">
+          {readiness.surfaces
+            .filter((surface) => surface.enabled)
+            .map((surface) => (
+              <li
+                key={surface.id}
+                className="rounded-xl border border-slate-800 bg-slate-950/50 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-slate-200">{t(surface.labelKey)}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge variant="info">{t("dashboard.publish.surfaceEnabled")}</Badge>
+                      <Badge variant={surface.ready ? "success" : "warning"}>
+                        {surface.ready
+                          ? t("dashboard.publish.surfaceReady")
+                          : t("dashboard.publish.surfaceNotReady")}
+                      </Badge>
+                    </div>
+                    {surface.url && (
+                      <p className="mt-2 truncate text-xs text-slate-500">{surface.url}</p>
+                    )}
+                  </div>
+                  {surface.url && (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="text-xs"
+                        onClick={() => void navigator.clipboard.writeText(surface.url)}
+                      >
+                        {t("dashboard.controlCenter.copy")}
+                      </Button>
+                      <a
+                        href={surface.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center rounded-lg border border-slate-700 px-3 py-2 text-xs text-violet-300 hover:bg-slate-800"
+                      >
+                        {t("dashboard.controlCenter.open")}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </li>
+            ))}
+        </ul>
+      </SectionCard>
 
       <SectionCard title={t("dashboard.publish.appStatus")}>
         <dl className="grid gap-3 text-sm md:grid-cols-2">
@@ -183,9 +324,17 @@ export default function PublishPage() {
 
       <SectionCard title={t("dashboard.publish.checklist")}>
         <ul className="space-y-2">
-          {checklist.map((item) => (
-            <ChecklistItem key={item.id} done={item.done} label={item.label} />
-          ))}
+          {checklist.map((item) =>
+            item.href ? (
+              <li key={item.id}>
+                <Link href={`/${item.href}${q}`} className="block rounded-lg hover:bg-slate-900/50">
+                  <ChecklistItem done={item.done} label={item.label} />
+                </Link>
+              </li>
+            ) : (
+              <ChecklistItem key={item.id} done={item.done} label={item.label} />
+            )
+          )}
         </ul>
         {requiredIncomplete.length > 0 && (
           <p className="mt-3 text-sm text-amber-400">{t("dashboard.publish.completeRequired")}</p>
@@ -221,10 +370,15 @@ export default function PublishPage() {
 
       <SectionCard title={t("dashboard.publish.actions")}>
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+        {publishDisabled && publishBlockReason && (
+          <p className="mb-4 text-sm text-amber-300">
+            {t("dashboard.publish.publishBlockedReason", { reason: publishBlockReason })}
+          </p>
+        )}
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            disabled={publishing || saving || requiredIncomplete.length > 0}
+            disabled={publishDisabled}
             onClick={() => {
               track("dashboard_publish_clicked");
               setConfirmAction("publish");

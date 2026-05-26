@@ -38,3 +38,9 @@ def validate_init_data(
         data.model_dump(by_alias=True),
         request_id=getattr(request.state, "request_id", None),
     )
+
+
+@router.post("/webhook/{integration_id}")
+def telegram_webhook_placeholder(integration_id: str, request: Request) -> dict:
+    """Safe placeholder webhook — no conversation logic in this package."""
+    return success_response({"ok": True, "integrationId": integration_id}, request_id=getattr(request.state, "request_id", None))

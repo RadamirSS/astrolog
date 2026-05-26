@@ -1,6 +1,46 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/CLOSED_PILOT_RUNBOOK.md](./ru/CLOSED_PILOT_RUNBOOK.md)
+
+---
+
 # Closed Pilot Runbook
 
-Operational guide for running a **closed pilot** with 1–3 creators after PR-ASTRO-PILOT-HARDENING-13.
+Operational guide for running a **closed pilot** with 1–3 creators after PR-ASTRO-FINAL-GATE-FIX-14 (builds on Package 13 hardening).
+
+---
+
+## Access control matrix
+
+| Action | platform_admin | creator (partner-scoped) | viewer |
+|--------|----------------|--------------------------|--------|
+| List/view own orders | all tenant | own partner only | own partner read-only |
+| Approve mock payment / unlock / revoke entitlement | yes | **denied** | **denied** |
+| Sync payment/report, retry report | yes | **denied** | **denied** |
+| Finance reads (payments, commissions, payouts, balance) | all or filtered | own partner only | own partner read-only |
+| Ledger, revenue, product economics | yes | **denied** | **denied** |
+| Release/hold commission, payouts, adjustments | yes | **denied** | **denied** |
+
+Creators without `partner_id` are denied finance and order ops access.
+
+---
+
+## Partner / commission source of truth
+
+- Partner records are **persisted in PostgreSQL** (`partners` table).
+- Commission rate resolves from `Partner.default_commission_rate` or platform default (`PLATFORM_DEFAULT_COMMISSION_RATE`, default 0.5).
+- Publishing tenant config ensures/creates the partner record from `miniApp.partnerId`.
+- Runtime finance routes do **not** fall back to static seed data.
+
+Public mini app resolver:
+- Primary: `GET /api/public/partners/{slug}`
+- Alias: `GET /api/public/miniapps/{slug}`
+
+---
+
+## Manual payout policy
+
+- Pilot payouts are **manual only** — no automatic bank/crypto/provider transfers.
+- Payout method API returns masked details only (`maskedDetails`); `external_token` is never exposed.
+- See [CLOSED_PILOT_PAYOUT_RUNBOOK.md](./CLOSED_PILOT_PAYOUT_RUNBOOK.md).
 
 ---
 
@@ -35,7 +75,8 @@ Production **forbids** `PAYMENT_API_MODE=mock` and `ASTRO_API_MODE=mock` at star
 - Dashboard ops (orders, entitlements, premium requests, partners)
 - **Persisted** orders, entitlements, premium requests, paid report records (PostgreSQL)
 - Server-side product validation at checkout (client cannot set price)
-- Partner slug resolution via SaaS `GET /api/public/partners/{slug}`
+- Partner slug resolution via SaaS `GET /api/public/partners/{slug}` (alias: `/api/public/miniapps/{slug}`)
+- Persisted partner commission rates (not runtime seed)
 
 ## What is external
 

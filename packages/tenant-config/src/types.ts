@@ -180,6 +180,62 @@ export interface ProductConfig {
 
 export type MiniAppPublicStatus = "draft" | "published" | "paused";
 
+export type SurfaceType = "telegram_mini_app" | "website" | "mobile_web";
+
+export type SurfaceStatus = "disabled" | "draft" | "configured" | "published" | "error";
+
+export type TelegramBotStatus =
+  | "not_connected"
+  | "connected"
+  | "invalid_token"
+  | "webhook_configured"
+  | "error";
+
+export interface TelegramSurfaceConfig {
+  botIntegrationId?: string;
+  botUsername?: string;
+  botDisplayName?: string;
+  botStatus: TelegramBotStatus;
+  miniAppUrl?: string;
+  deepLink?: string;
+  webhookStatus?: "pending" | "configured" | "error";
+  lastValidatedAt?: string;
+  errorMessage?: string;
+}
+
+export interface WebsiteSurfaceConfig {
+  slug: string;
+  publicUrl?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  status?: SurfaceStatus;
+  previewUrl?: string;
+}
+
+export interface MobileWebSurfaceConfig {
+  publicUrl?: string;
+  installableHintEnabled?: boolean;
+  bottomNavEnabled?: boolean;
+  status?: SurfaceStatus;
+}
+
+export type SurfaceConfigJson =
+  | TelegramSurfaceConfig
+  | WebsiteSurfaceConfig
+  | MobileWebSurfaceConfig;
+
+export interface SurfaceConfig {
+  id: string;
+  type: SurfaceType;
+  status: SurfaceStatus;
+  publicUrl?: string;
+  previewUrl?: string;
+  configJson: SurfaceConfigJson;
+  createdAt?: string;
+  updatedAt?: string;
+  publishedAt?: string;
+}
+
 export interface MiniAppConfig {
   publicSlug: string;
   visualPack: VisualPack;
@@ -193,6 +249,12 @@ export interface MiniAppConfig {
   introCopy?: string;
   welcomeMessage?: string;
   promoCtaCopy?: string;
+}
+
+/** Extended mini app config with multi-surface publishing */
+export interface CreatorMiniAppConfig extends MiniAppConfig {
+  name?: string;
+  surfaces?: SurfaceConfig[];
 }
 
 export type AppLocaleCode = "en" | "ru";
@@ -298,7 +360,7 @@ export interface TenantConfig {
     analytics?: { enabled: false };
   };
   products: ProductConfig[];
-  miniApp?: MiniAppConfig;
+  miniApp?: CreatorMiniAppConfig;
   locales?: {
     ru?: TenantLocaleOverrides;
   };

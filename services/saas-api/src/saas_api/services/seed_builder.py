@@ -148,7 +148,7 @@ def create_default_tenant_config(
         "version": 1,
         "brand": {
             "displayName": display_name,
-            "tagline": "Discover your cosmic path",
+            "tagline": "Explore your cosmic blueprint",
             "supportEmail": f"hello@{slug.replace('-', '')}.demo.astrology.app",
         },
         "theme": {"preset": preset, "overrides": {}},

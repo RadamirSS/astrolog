@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/REFUND_ADJUSTMENT_PROCESS.md](./ru/REFUND_ADJUSTMENT_PROCESS.md)
+
+---
+
 # Refund and Adjustment Process
 
 ## Manual refund (closed pilot)

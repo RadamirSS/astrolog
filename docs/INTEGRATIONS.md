@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/INTEGRATIONS.md](./ru/INTEGRATIONS.md)
+
+---
+
 # External API Integrations (Package 4)
 
 This platform integrates with two external service boundaries. It does **not** implement astrology calculations or real payment processing.

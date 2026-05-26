@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { getApiMode } from "@astro/api-client";
 import { useT } from "@astro/i18n";
 import { MockModeBanner } from "@astro/ui";
@@ -19,6 +20,7 @@ import { ProductDetailScreen } from "./screens/ProductDetailScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { RemoteAuthErrorScreen } from "./RemoteAuthErrorScreen";
 import type { MiniAppScreen } from "./types";
+import type { SurfaceType } from "@astro/tenant-config";
 
 function NavIcon({ id, active }: { id: "home" | "profile" | "shop"; active: boolean }) {
   const color = active ? "var(--color-primary)" : "var(--color-text-muted)";
@@ -87,18 +89,27 @@ function screenComponent(screen: MiniAppScreen) {
 interface MiniAppShellProps {
   children: React.ReactNode;
   hideNavigation?: boolean;
+  showPreviewNavigation?: boolean;
+  previewScreen?: MiniAppScreen;
+  onPreviewNavigate?: (screen: MiniAppScreen) => void;
 }
 
-export function MiniAppShell({ children, hideNavigation = false }: MiniAppShellProps) {
+export function MiniAppShell({
+  children,
+  hideNavigation = false,
+  showPreviewNavigation = false,
+  previewScreen = "home",
+  onPreviewNavigate,
+}: MiniAppShellProps) {
   const { config, previewMode, authError, authReady, hydrated } = useMiniApp();
   const pathname = usePathname();
   const paths = miniAppPaths(config.slug);
   const t = useT();
+
+  const previewNavActive = previewMode && showPreviewNavigation;
   const showNav =
     !hideNavigation &&
-    !previewMode &&
-    !authError &&
-    !hideBottomNav(pathname, config.slug);
+    (previewNavActive || (!previewMode && !authError && !hideBottomNav(pathname, config.slug)));
 
   if (authReady && authError) {
     return (
@@ -125,6 +136,7 @@ export function MiniAppShell({ children, hideNavigation = false }: MiniAppShellP
     id: "home" | "profile" | "shop";
     label: string;
     enabled: boolean;
+    screen: MiniAppScreen;
     match: (p: string) => boolean;
   }[] = [
     {
@@ -132,6 +144,7 @@ export function MiniAppShell({ children, hideNavigation = false }: MiniAppShellP
       id: "home",
       label: t("miniapp.nav.home"),
       enabled: true,
+      screen: "home",
       match: (p) => p === paths.home,
     },
     {
@@ -139,6 +152,7 @@ export function MiniAppShell({ children, hideNavigation = false }: MiniAppShellP
       id: "profile",
       label: t("miniapp.nav.profile"),
       enabled: config.modules.profile,
+      screen: "profile",
       match: (p) => p === paths.profile,
     },
     {
@@ -146,6 +160,7 @@ export function MiniAppShell({ children, hideNavigation = false }: MiniAppShellP
       id: "shop",
       label: t("miniapp.nav.shop"),
       enabled: config.modules.products,
+      screen: "products",
       match: (p) => p === paths.products || p.startsWith(`${paths.products}/`),
     },
   ];
@@ -162,7 +177,26 @@ export function MiniAppShell({ children, hideNavigation = false }: MiniAppShellP
           {navItems
             .filter((item) => item.enabled)
             .map((item) => {
-              const active = item.match(pathname);
+              const active = previewNavActive
+                ? previewScreen === item.screen ||
+                  (item.screen === "products" && previewScreen === "productDetail")
+                : item.match(pathname);
+              if (previewNavActive) {
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 py-2.5 transition-colors"
+                    style={{ color: active ? "var(--color-primary)" : "var(--color-text-muted)" }}
+                    onClick={() => onPreviewNavigate?.(item.screen)}
+                  >
+                    <NavIcon id={item.id} active={active} />
+                    <span className={`text-xs ${active ? "font-semibold" : "font-medium"}`}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              }
               return (
                 <Link key={item.href} href={item.href} className="flex-1">
                   <button
@@ -190,6 +224,9 @@ export function MiniAppRoot({
   initialScreen = "home",
   previewProductId,
   seedPreviewSession,
+  showPreviewNavigation = false,
+  previewSurface,
+  mobileFirst = false,
   children,
 }: {
   config: import("@astro/tenant-config").TenantConfig;
@@ -197,8 +234,21 @@ export function MiniAppRoot({
   initialScreen?: MiniAppScreen;
   previewProductId?: string;
   seedPreviewSession?: boolean;
+  showPreviewNavigation?: boolean;
+  previewSurface?: SurfaceType;
+  mobileFirst?: boolean;
   children?: React.ReactNode;
 }) {
+  const [previewScreen, setPreviewScreen] = useState<MiniAppScreen>(initialScreen);
+  useEffect(() => {
+    if (previewMode) setPreviewScreen(initialScreen);
+  }, [previewMode, initialScreen]);
+  const handlePreviewNavigate = useCallback((screen: MiniAppScreen) => {
+    setPreviewScreen(screen);
+  }, []);
+
+  const effectiveScreen = previewMode ? previewScreen : initialScreen;
+
   return (
     <MiniAppProvider
       config={config}
@@ -206,7 +256,20 @@ export function MiniAppRoot({
       previewProductId={previewProductId}
       seedPreviewSession={seedPreviewSession}
     >
-      <MiniAppShell hideNavigation={previewMode}>{children ?? screenComponent(initialScreen)}</MiniAppShell>
+      <MiniAppShell
+        hideNavigation={false}
+        showPreviewNavigation={previewMode && showPreviewNavigation}
+        previewScreen={effectiveScreen}
+        onPreviewNavigate={handlePreviewNavigate}
+      >
+        <div
+          data-preview-surface={previewSurface}
+          data-mobile-first={mobileFirst ? "true" : undefined}
+          className={mobileFirst ? "mx-auto w-full max-w-[430px]" : undefined}
+        >
+          {children ?? screenComponent(effectiveScreen)}
+        </div>
+      </MiniAppShell>
     </MiniAppProvider>
   );
 }

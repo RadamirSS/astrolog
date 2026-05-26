@@ -14,6 +14,7 @@ from saas_api.db.models.tenant_member import TenantMember, TenantMemberRole
 from saas_api.db.session import get_db, get_engine, get_session_factory, init_db, reset_engine
 from saas_api.main import create_app
 from saas_api.services.integration_service import ensure_default_integration_statuses
+from saas_api.services.partner_service import seed_demo_partners
 from saas_api.services.seed_builder import build_mystic_config, publish_config_copy
 from saas_api.settings import settings
 
@@ -159,6 +160,7 @@ def seeded_db(db: Session) -> Session:
         ]
     )
     ensure_default_integration_statuses(db, tenant.id)
+    seed_demo_partners(db, tenant.id)
 
     tenant2 = Tenant(
         id="tenant_other",

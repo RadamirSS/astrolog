@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/DEPLOYMENT_GUIDE.md](./ru/DEPLOYMENT_GUIDE.md)
+
+---
+
 # Deployment Guide
 
 BE-05 deployment guide for closed pilot (1–3 bloggers). Supports two paths: managed services (fast) and VPS/Docker.

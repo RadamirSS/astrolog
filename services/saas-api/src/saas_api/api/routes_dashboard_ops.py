@@ -8,6 +8,7 @@ from saas_api.auth.dependencies import assert_tenant_member_or_platform_admin, g
 from saas_api.db.models.account import Account
 from saas_api.db.session import get_db
 from saas_api.services import ops_seed_service
+from saas_api.services.partner_service import get_partner_db, list_partners_db
 from saas_api.services.audit_service import log_action
 from saas_api.services.finance_access import (
     assert_finance_admin,
@@ -15,6 +16,12 @@ from saas_api.services.finance_access import (
     assert_finance_read_access,
     assert_partner_access,
     resolve_partner_scope,
+)
+from saas_api.services.ops_access import (
+    assert_ops_admin,
+    assert_ops_read_access,
+    assert_order_partner_access,
+    resolve_order_partner_scope,
 )
 from saas_api.services.finance_service import (
     approve_payout,
@@ -36,6 +43,7 @@ from saas_api.services.finance_store import (
     list_commissions_db,
     list_ledger_db,
     list_payments_db,
+    list_payout_methods_db,
     list_payouts_db,
 )
 from saas_api.services.product_economics_service import compute_product_economics
@@ -71,7 +79,9 @@ def list_orders(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
-    params = {"status": status, "productType": productType, "partnerId": partnerId}
+    assert_ops_read_access(db, account, tenant_id)
+    scope = resolve_order_partner_scope(account, partnerId)
+    params = {"status": status, "productType": productType, "partnerId": scope}
     data = list_orders_for_tenant(db, tenant_id, params)
     return success_response(data, request_id=getattr(request.state, "request_id", None))
 
@@ -85,11 +95,13 @@ def get_order(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_read_access(db, account, tenant_id)
     data = get_order_for_tenant_dict(db, tenant_id, order_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
 
         raise AppError(ApiErrorCode.NOT_FOUND, "Order not found", status_code=404)
+    assert_order_partner_access(account, data.get("partnerId"))
     data["mockPaymentApprovalAllowed"] = mock_payment_approval_allowed()
     return success_response(data, request_id=getattr(request.state, "request_id", None))
 
@@ -103,6 +115,13 @@ async def sync_payment(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_read_access(db, account, tenant_id)
+    existing = get_order_for_tenant_dict(db, tenant_id, order_id)
+    if not existing:
+        from backend_common.errors import ApiErrorCode, AppError
+
+        raise AppError(ApiErrorCode.NOT_FOUND, "Order not found", status_code=404)
+    assert_order_partner_access(account, existing.get("partnerId"))
     data = await sync_order_payment(db, tenant_id, order_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
@@ -120,6 +139,7 @@ async def sync_report(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_admin(account)
     data = await sync_order_report(db, tenant_id, order_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
@@ -137,6 +157,7 @@ async def retry_report(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_admin(account)
     data = await retry_order_report(db, tenant_id, order_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
@@ -155,6 +176,13 @@ def needs_review(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_read_access(db, account, tenant_id)
+    existing = get_order_for_tenant_dict(db, tenant_id, order_id)
+    if not existing:
+        from backend_common.errors import ApiErrorCode, AppError
+
+        raise AppError(ApiErrorCode.NOT_FOUND, "Order not found", status_code=404)
+    assert_order_partner_access(account, existing.get("partnerId"))
     needs = True if body is None else bool(body.get("needsReview", True))
     data = set_order_needs_review(db, tenant_id, order_id, needs)
     if not data:
@@ -173,6 +201,7 @@ def revoke(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_admin(account)
     data = revoke_entitlement(db, tenant_id, order_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
@@ -198,6 +227,7 @@ def unlock(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_admin(account)
     data = unlock_entitlement(db, tenant_id, order_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
@@ -236,6 +266,7 @@ async def approve_mock_payment_route(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
+    assert_ops_admin(account)
     data = await approve_mock_payment(
         db, tenant_id, order_id, actor_account_id=account.id
     )
@@ -262,7 +293,7 @@ def list_partners(
     db: Session = Depends(get_db),
 ) -> dict:
     _assert_access(tenant_id, account, db)
-    partners = ops_seed_service.list_partners(tenant_id)
+    partners = list_partners_db(db, tenant_id)
     if not is_platform_admin(account):
         assert_finance_read_access(db, account, tenant_id)
         partners = [p for p in partners if p.get("id") == account.partner_id]
@@ -283,7 +314,7 @@ def get_partner(
     _assert_access(tenant_id, account, db)
     assert_finance_read_access(db, account, tenant_id)
     assert_partner_access(account, partner_id)
-    data = ops_seed_service.get_partner(tenant_id, partner_id)
+    data = get_partner_db(db, tenant_id, partner_id)
     if not data:
         from backend_common.errors import ApiErrorCode, AppError
 
@@ -303,10 +334,6 @@ def list_commissions(
     assert_finance_read_access(db, account, tenant_id)
     scope = resolve_partner_scope(account, partnerId)
     data = list_commissions_db(db, tenant_id, partner_id=scope)
-    if not data:
-        data = ops_seed_service.list_commissions(tenant_id)
-        if scope:
-            data = [c for c in data if c.get("partnerId") == scope]
     return success_response(data, request_id=getattr(request.state, "request_id", None))
 
 
@@ -322,17 +349,6 @@ def commission_summary(
     assert_finance_read_access(db, account, tenant_id)
     scope = resolve_partner_scope(account, partnerId)
     summary = commission_summary_from_db(db, tenant_id, partner_id=scope)
-    if not any(summary.values()):
-        legacy = ops_seed_service.get_commission_summary(tenant_id)
-        summary = {
-            "pending": legacy.get("pending", 0),
-            "available": legacy.get("payable", 0),
-            "onHold": 0.0,
-            "approved": legacy.get("approved", 0),
-            "paid": legacy.get("paid", 0),
-            "adjusted": legacy.get("adjusted", 0),
-            "cancelled": legacy.get("cancelled", 0),
-        }
     return success_response(summary, request_id=getattr(request.state, "request_id", None))
 
 
@@ -402,10 +418,6 @@ def list_payouts(
     assert_finance_read_access(db, account, tenant_id)
     scope = resolve_partner_scope(account, partnerId)
     data = list_payouts_db(db, tenant_id, partner_id=scope)
-    if not data:
-        data = ops_seed_service.list_payouts(tenant_id)
-        if scope:
-            data = [p for p in data if p.get("partnerId") == scope]
     return success_response(data, request_id=getattr(request.state, "request_id", None))
 
 
@@ -507,6 +519,21 @@ def update_payout(
 
         raise AppError(ApiErrorCode.NOT_FOUND, "Payout not found", status_code=404)
     db.commit()
+    return success_response(data, request_id=getattr(request.state, "request_id", None))
+
+
+@router.get("/payout-methods")
+def list_payout_methods(
+    tenant_id: str,
+    request: Request,
+    partnerId: str | None = Query(default=None),
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> dict:
+    _assert_access(tenant_id, account, db)
+    assert_finance_read_access(db, account, tenant_id)
+    scope = resolve_partner_scope(account, partnerId)
+    data = list_payout_methods_db(db, tenant_id, partner_id=scope)
     return success_response(data, request_id=getattr(request.state, "request_id", None))
 
 

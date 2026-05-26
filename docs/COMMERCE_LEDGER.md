@@ -1,3 +1,7 @@
+> **Исторический / English doc.** Актуальная версия: [docs/ru/COMMERCE_LEDGER.md](./ru/COMMERCE_LEDGER.md)
+
+---
+
 # Commerce Ledger Model
 
 This document describes the platform-side financial foundation for the closed pilot.

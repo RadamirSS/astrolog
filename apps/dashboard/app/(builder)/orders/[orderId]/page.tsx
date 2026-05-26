@@ -23,6 +23,7 @@ import {
   formatMoney,
 } from "../../../../components/ops/OpsShared";
 import { useOpsQuery } from "../../../../hooks/useOpsData";
+import { useAccountRole } from "../../../../hooks/useAccountRole";
 
 export default function OrderDetailPage() {
   const params = useParams<{ orderId: string }>();
@@ -38,6 +39,7 @@ export default function OrderDetailPage() {
     () => getOrder(tenantId, orderId),
     [tenantId, orderId]
   );
+  const { isPlatformAdmin, loading: roleLoading } = useAccountRole();
 
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,7 @@ export default function OrderDetailPage() {
     }
   }
 
-  if (loading) return <LoadingState message="Loading order..." className="text-slate-400" />;
+  if (loading || roleLoading) return <LoadingState message="Loading order..." className="text-slate-400" />;
   if (error || !order) {
     return (
       <ErrorState
@@ -125,70 +127,72 @@ export default function OrderDetailPage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Integration operations">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            disabled={Boolean(actionLoading)}
-            onClick={() => runAction("payment", () => syncOrderPayment(tenantId, orderId))}
-          >
-            {actionLoading === "payment" ? "Checking..." : "Check payment status"}
-          </Button>
-          {order.mockPaymentApprovalAllowed && order.paymentStatus !== "paid" && (
+      {isPlatformAdmin && (
+        <SectionCard title="Integration operations">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               disabled={Boolean(actionLoading)}
-              onClick={() =>
-                runAction("mockApprove", () => approveMockPayment(tenantId, orderId))
-              }
+              onClick={() => runAction("payment", () => syncOrderPayment(tenantId, orderId))}
             >
-              {actionLoading === "mockApprove" ? "Approving..." : "Approve mock payment"}
+              {actionLoading === "payment" ? "Checking..." : "Check payment status"}
             </Button>
-          )}
-          <Button
-            variant="secondary"
-            disabled={Boolean(actionLoading)}
-            onClick={() => runAction("report", () => syncOrderReport(tenantId, orderId))}
-          >
-            {actionLoading === "report" ? "Checking..." : "Check report status"}
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={Boolean(actionLoading)}
-            onClick={() => runAction("retry", () => retryOrderReport(tenantId, orderId))}
-          >
-            {actionLoading === "retry" ? "Retrying..." : "Retry report generation"}
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={Boolean(actionLoading)}
-            onClick={() => runAction("review", () => setOrderNeedsReview(tenantId, orderId, true))}
-          >
-            Mark needs review
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={Boolean(actionLoading)}
-            onClick={() => runAction("revoke", () => revokeEntitlement(tenantId, orderId))}
-          >
-            Revoke entitlement (manual)
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={Boolean(actionLoading)}
-            onClick={() => runAction("unlock", () => unlockEntitlement(tenantId, orderId))}
-          >
-            Unlock entitlement (manual)
-          </Button>
-        </div>
-        {(order.reportErrorCode || order.reportErrorMessage) && (
-          <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/20 p-3 text-xs">
-            <p className="font-medium text-red-300">Report error</p>
-            <p className="text-red-200/80">{order.reportErrorCode}</p>
-            <p className="text-slate-400">{order.reportErrorMessage}</p>
+            {order.mockPaymentApprovalAllowed && order.paymentStatus !== "paid" && (
+              <Button
+                variant="secondary"
+                disabled={Boolean(actionLoading)}
+                onClick={() =>
+                  runAction("mockApprove", () => approveMockPayment(tenantId, orderId))
+                }
+              >
+                {actionLoading === "mockApprove" ? "Approving..." : "Approve mock payment"}
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              disabled={Boolean(actionLoading)}
+              onClick={() => runAction("report", () => syncOrderReport(tenantId, orderId))}
+            >
+              {actionLoading === "report" ? "Checking..." : "Check report status"}
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={Boolean(actionLoading)}
+              onClick={() => runAction("retry", () => retryOrderReport(tenantId, orderId))}
+            >
+              {actionLoading === "retry" ? "Retrying..." : "Retry report generation"}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={Boolean(actionLoading)}
+              onClick={() => runAction("review", () => setOrderNeedsReview(tenantId, orderId, true))}
+            >
+              Mark needs review
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={Boolean(actionLoading)}
+              onClick={() => runAction("revoke", () => revokeEntitlement(tenantId, orderId))}
+            >
+              Revoke entitlement (manual)
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={Boolean(actionLoading)}
+              onClick={() => runAction("unlock", () => unlockEntitlement(tenantId, orderId))}
+            >
+              Unlock entitlement (manual)
+            </Button>
           </div>
-        )}
-      </SectionCard>
+          {(order.reportErrorCode || order.reportErrorMessage) && (
+            <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/20 p-3 text-xs">
+              <p className="font-medium text-red-300">Report error</p>
+              <p className="text-red-200/80">{order.reportErrorCode}</p>
+              <p className="text-slate-400">{order.reportErrorMessage}</p>
+            </div>
+          )}
+        </SectionCard>
+      )}
 
       <SectionCard title="Partner attribution">
         <dl className="grid gap-2 text-sm md:grid-cols-2">
